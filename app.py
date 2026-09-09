@@ -24,17 +24,20 @@ def init_supabase() -> Client:
 supabase = init_supabase()
 
 # Funciones de lectura y escritura
+# Funciones de lectura y escritura corregidas
 def obtener_eventos():
+    # 'personal(*)' hace el JOIN automático entre eventos y la tabla personal
     response = supabase.table("eventos").select("*, personal(*)").order("fecha", desc=False).execute()
     return response.data
 
-def guardar_evento(payload):
-    res = supabase.table("eventos").insert(payload).execute()
-    return res.data
-
 def guardar_personal(evento_id, data_personal):
     data_personal["evento_id"] = evento_id
+    # 'upsert' inserta o actualiza si ya existe el registro para este evento
     res = supabase.table("personal").upsert(data_personal, on_conflict="evento_id").execute()
+    return res.data
+
+def guardar_evento(payload):
+    res = supabase.table("eventos").insert(payload).execute()
     return res.data
 
 # =========================================================
