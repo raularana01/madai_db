@@ -9,6 +9,41 @@ st.set_page_config(
     layout="wide"
 )
 
+# Estilos CSS para imitar la tarjeta púrpura con datos alineados
+st.markdown("""
+    <style>
+    .card-box {
+        background-color: #F3EAF8;
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 15px;
+        border: 1px solid #E2D0F0;
+    }
+    .badge-marca {
+        background-color: #7B2CBF;
+        color: white;
+        padding: 6px 14px;
+        border-radius: 8px;
+        font-weight: bold;
+        font-size: 13px;
+        text-align: center;
+        text-transform: uppercase;
+        display: inline-block;
+    }
+    .event-title {
+        font-size: 18px;
+        font-weight: bold;
+        color: #111111;
+        margin-bottom: 8px;
+    }
+    .data-line {
+        font-size: 14px;
+        color: #222222;
+        margin-bottom: 4px;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
 # 2. Conexión a Supabase mediante Secrets
 @st.cache_resource
 def init_supabase() -> Client:
@@ -123,39 +158,54 @@ with tab1:
     if not eventos:
         st.info("No hay eventos registrados.")
     else:
-        # Mostramos los eventos en rejilla de tarjetas (2 por fila en escritorio)
         cols = st.columns(2)
         for idx, ev in enumerate(eventos):
-            with cols[idx % 2].container(border=True):
-                # Encabezado de la tarjeta
-                head_col1, head_col2 = st.columns([4, 1])
-                with head_col1:
-                    st.markdown(f"### 🗓️ {ev['fecha']}")
-                    st.caption(f"🏷️ **{ev['marca']}** | 📍 {ev.get('direccion', 'Sin ubicación')}")
-                with head_col2:
-                    if st.button("❌", key=f"del_{ev['id']}", help="Eliminar evento"):
+            with cols[idx % 2]:
+                with st.container(border=True):
+                    # 1. Cabecera con Título, Fecha, Tipo y Etiqueta de Marca
+                    col_head1, col_head2 = st.columns([3, 1])
+                    with col_head1:
+                        tipo_str = f"({ev.get('tipo', 'Evento')})" if ev.get('tipo') else ""
+                        st.markdown(f"### 🗓️ {ev['fecha']} | 🎉 {ev['evento']} {tipo_str}")
+                    with col_head2:
+                        marca_nombre = ev.get('marca', 'MADAI')
+                        st.markdown(f"<div style='text-align: right;'><span class='badge-marca'>🏷️ {marca_nombre}</span></div>", unsafe_allow_html=True)
+
+                    # 2. Datos ordenados correctamente
+                    costo = float(ev.get('costo_total', 0) or 0)
+                    adelanto = float(ev.get('monto_adelanto', 0) or 0)
+                    estado_pago = "Pagado" if adelanto >= costo and costo > 0 else ("Pago parcial" if adelanto > 0 else "Pendiente")
+
+                    st.markdown(f"""
+                        <div class='data-line'>⏰ <b>Hora Contrato:</b> {ev.get('hora_contrato', 'N/A')} | <b>Citación:</b> {ev.get('hora_citacion', 'N/A')}</div>
+                        <div class='data-line'>👤 <b>Cliente:</b> {ev.get('cliente', 'N/A')} | 📱 <b>Tel:</b> {ev.get('telefono', 'N/A')}</div>
+                        <div class='data-line'>📍 <b>Lugar:</b> {ev.get('direccion', 'N/A')}</div>
+                        <div class='data-line'>💰 <b>Total:</b> S/ {costo:.0f} | <b>Estado:</b> {estado_pago}</div>
+                    """, unsafe_allow_html=True)
+
+                    st.write("")
+
+                    # 3. Estado de Personal
+                    p_info = ev.get("personal", [])
+                    tiene_personal = isinstance(p_info, list) and len(p_info) > 0
+                    if tiene_personal:
+                        st.success("👥 Personal asignado", icon="✅")
+                    else:
+                        st.warning("⚠️ Personal no asignado")
+
+                    st.divider()
+
+                    # 4. Botones
+                    b_col1, b_col2, b_col3 = st.columns([4, 4, 1])
+                    if b_col1.button("👤 Personal", key=f"pers_{ev['id']}", use_container_width=True):
+                        modal_asignar_personal(ev)
+                    
+                    if b_col2.button("👁️ Ver Ficha", key=f"ver_{ev['id']}", use_container_width=True):
+                        modal_ver_ficha(ev)
+                        
+                    if b_col3.button("🗑️", key=f"del_{ev['id']}", help="Eliminar evento"):
                         eliminar_evento(ev['id'])
                         st.rerun()
-
-                st.subheader(ev['evento'])
-
-                # Indicador de Personal
-                p_info = ev.get("personal", [])
-                tiene_personal = isinstance(p_info, list) and len(p_info) > 0
-                if tiene_personal:
-                    st.success("👥 Personal asignado", icon="✅")
-                else:
-                    st.warning("⚠️ Personal no asignado")
-
-                st.divider()
-
-                # ÚNICOS DOS BOTONES SOLICITADOS
-                b_col1, b_col2 = st.columns(2)
-                if b_col1.button("👤 Personal", key=f"pers_{ev['id']}", use_container_width=True):
-                    modal_asignar_personal(ev)
-                
-                if b_col2.button("👁️ Ver Ficha", key=f"ver_{ev['id']}", use_container_width=True):
-                    modal_ver_ficha(ev)
 
 with tab2:
     st.header("Registrar Nuevo Evento")
@@ -164,14 +214,14 @@ with tab2:
         with col_a:
             marca = st.selectbox("Marca", ["Decoraciones MADAI", "Otra"])
             fecha = st.date_input("Fecha del Evento")
-            tipo = st.text_input("Tipo de Evento", value="Infantil")
+            tipo = st.text_input("Tipo de Evento", value="Show")
             evento = st.text_input("Nombre del Evento / Cumpleañero(a)")
             cliente = st.text_input("Nombre del Cliente")
             telefono = st.text_input("Teléfono")
         
         with col_b:
-            hora_contrato = st.text_input("Hora Contrato", value="4:00 PM")
-            hora_citacion = st.text_input("Hora Citación", value="3:30 PM")
+            hora_contrato = st.text_input("Hora Contrato", value="04:00 PM")
+            hora_citacion = st.text_input("Hora Citación", value="03:30 PM")
             direccion = st.text_input("Dirección / Ubicación")
             costo_total = st.number_input("Costo Total (S/)", min_value=0.0, step=10.0)
             monto_adelanto = st.number_input("Monto Adelanto (S/)", min_value=0.0, step=10.0)
