@@ -20,7 +20,6 @@ supabase = init_supabase()
 
 # 3. Funciones de Base de Datos
 def obtener_eventos():
-    # Trae los eventos y realiza el JOIN automático con la tabla personal
     response = supabase.table("eventos").select("*, personal(*)").order("fecha", desc=False).execute()
     return response.data
 
@@ -33,7 +32,6 @@ def eliminar_evento(evento_id):
 
 def guardar_personal(evento_id, data_personal):
     data_personal["evento_id"] = evento_id
-    # Actualiza o inserta asegurando que no se duplique por evento_id
     res = supabase.table("personal").upsert(data_personal, on_conflict="evento_id").execute()
     return res.data
 
@@ -42,7 +40,6 @@ def guardar_personal(evento_id, data_personal):
 def modal_asignar_personal(evento):
     st.subheader(f"Evento: {evento['evento']} ({evento['fecha']})")
     
-    # Extraer datos previos si existen
     p_previo = evento.get("personal", [])
     p_data = p_previo[0] if isinstance(p_previo, list) and len(p_previo) > 0 else {}
 
@@ -116,7 +113,7 @@ def modal_ver_ficha(evento):
         st.write(evento['descripcion'])
 
 # 5. Interfaz Principal
-st.title("📅 Agenda Madai - Gestión de Eventos")
+st.title("📅 Agenda Madai")
 
 tab1, tab2 = st.tabs(["📋 Lista de Eventos", "➕ Registrar Evento"])
 
@@ -126,37 +123,39 @@ with tab1:
     if not eventos:
         st.info("No hay eventos registrados.")
     else:
-        for ev in eventos:
-            with st.container(border=True):
-                col1, col2, col3, col4 = st.columns([2, 3, 2, 3])
-                
-                with col1:
-                    st.subheader(ev["fecha"])
-                    st.caption(f"🏷️ {ev['marca']}")
-                
-                with col2:
-                    st.write(f"**{ev['evento']}**")
-                    st.write(f"📍 {ev.get('direccion', 'Sin dirección')}")
-                
-                with col3:
-                    p_info = ev.get("personal", [])
-                    tiene_personal = isinstance(p_info, list) and len(p_info) > 0
-                    if tiene_personal:
-                        st.success("👥 Personal OK")
-                    else:
-                        st.warning("⚠️ Sin Personal")
-                
-                with col4:
-                    btn_col1, btn_col2, btn_col3 = st.columns(3)
-                    if btn_col1.button("👁️ Ficha", key=f"ver_{ev['id']}"):
-                        modal_ver_ficha(ev)
-                    
-                    if btn_col2.button("👤 Personal", key=f"pers_{ev['id']}"):
-                        modal_asignar_personal(ev)
-                    
-                    if btn_col3.button("🗑️", key=f"del_{ev['id']}"):
+        # Mostramos los eventos en rejilla de tarjetas (2 por fila en escritorio)
+        cols = st.columns(2)
+        for idx, ev in enumerate(eventos):
+            with cols[idx % 2].container(border=True):
+                # Encabezado de la tarjeta
+                head_col1, head_col2 = st.columns([4, 1])
+                with head_col1:
+                    st.markdown(f"### 🗓️ {ev['fecha']}")
+                    st.caption(f"🏷️ **{ev['marca']}** | 📍 {ev.get('direccion', 'Sin ubicación')}")
+                with head_col2:
+                    if st.button("❌", key=f"del_{ev['id']}", help="Eliminar evento"):
                         eliminar_evento(ev['id'])
                         st.rerun()
+
+                st.subheader(ev['evento'])
+
+                # Indicador de Personal
+                p_info = ev.get("personal", [])
+                tiene_personal = isinstance(p_info, list) and len(p_info) > 0
+                if tiene_personal:
+                    st.success("👥 Personal asignado", icon="✅")
+                else:
+                    st.warning("⚠️ Personal no asignado")
+
+                st.divider()
+
+                # ÚNICOS DOS BOTONES SOLICITADOS
+                b_col1, b_col2 = st.columns(2)
+                if b_col1.button("👤 Personal", key=f"pers_{ev['id']}", use_container_width=True):
+                    modal_asignar_personal(ev)
+                
+                if b_col2.button("👁️ Ver Ficha", key=f"ver_{ev['id']}", use_container_width=True):
+                    modal_ver_ficha(ev)
 
 with tab2:
     st.header("Registrar Nuevo Evento")
