@@ -9,7 +9,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Estilos CSS
+# Estilos CSS compactos
 st.markdown("""
     <style>
     .card-box {
@@ -41,6 +41,11 @@ st.markdown("""
         margin-bottom: 4px;
         line-height: 1.4;
     }
+    /* Reducir márgenes verticales en inputs para un diseño compacto */
+    .stTextInput > div > div > input {
+        padding-top: 6px;
+        padding-bottom: 6px;
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -67,73 +72,99 @@ def guardar_personal(evento_id, data_personal):
     res = supabase.table("personal").upsert(data_personal, on_conflict="evento_id").execute()
     return res.data
 
-# 4. Modal para Asignar Personal (Fix con st.form)
+# 4. Modal para Asignar Personal
 @st.dialog("👤 Asignar Personal al Evento")
 def modal_asignar_personal(evento):
     p_previo = evento.get("personal", [])
     p_data = p_previo[0] if isinstance(p_previo, list) and len(p_previo) > 0 else {}
 
-    # Estado persistente para la cantidad de campos de Dalina
-    cnt_key = f"cant_dalinas_{evento['id']}"
-    if cnt_key not in st.session_state:
+    # Clave de estado persistente por evento
+    state_key = f"dalinas_lista_{evento['id']}"
+
+    # Cargar valores previos o inicializar con 1 campo
+    if state_key not in st.session_state:
         dalinas_existentes = p_data.get("dalinas", "")
-        lista_inicial = [d.strip() for d in dalinas_existentes.split(",") if d.strip()] if dalinas_existentes else [""]
-        st.session_state[cnt_key] = max(len(lista_inicial), 1)
+        if dalinas_existentes:
+            st.session_state[state_key] = [d.strip() for d in dalinas_existentes.split(",") if d.strip()]
+        else:
+            st.session_state[state_key] = [""]
 
-    cant_dalinas = st.session_state[cnt_key]
+    dalinas = st.session_state[state_key]
+    cant = len(dalinas)
 
-    # Botón fuera del Form para agregar casilleros sin cerrar el modal
-    st.markdown(f"**💃 Dalinas ({cant_dalinas}/7):**")
-    if cant_dalinas < 7:
-        if st.button("➕ Agregar Dalina", key=f"btn_add_{evento['id']}"):
-            st.session_state[cnt_key] += 1
-            st.rerun()
+    st.markdown(f"**💃 Dalinas ({cant}/7):**")
 
-    # Formulario principal de captura
-    with st.form(key=f"form_personal_{evento['id']}"):
-        dalinas_ingresadas = []
-        dalinas_existentes = p_data.get("dalinas", "")
-        lista_previa = [d.strip() for d in dalinas_existentes.split(",") if d.strip()] if dalinas_existentes else []
+    dalinas_actualizadas = []
 
-        for i in range(cant_dalinas):
-            val_def = lista_previa[i] if i < len(lista_previa) else ""
-            d_val = st.text_input(
+    # Renderizado compacto de inputs + botón '+'
+    for i in range(cant):
+        # Columnas ajustadas para pegarle el botón '+' al primer input o al último
+        if i == cant - 1 and cant < 7:
+            col_in, col_btn = st.columns([5, 1])
+        else:
+            col_in, col_btn = st.columns([1, 0.001]) # Columna limpia si no hay botón
+
+        with col_in:
+            val = st.text_input(
                 f"Dalina {i+1}", 
-                value=val_def, 
+                value=dalinas[i], 
                 placeholder=f"Nombre Dalina {i+1}", 
-                key=f"in_dalina_{evento['id']}_{i}"
+                key=f"dal_in_{evento['id']}_{i}",
+                label_visibility="collapsed" if i > 0 else "visible"
             )
-            if d_val.strip():
-                dalinas_ingresadas.append(d_val.strip())
+            dalinas_actualizadas.append(val)
 
-        st.divider()
+        if i == cant - 1 and cant < 7:
+            with col_btn:
+                # Ajuste de espacio superior para alinear con la caja de texto
+                if i == 0:
+                    st.write('<div style="margin-top: 28px;"></div>', unsafe_allow_html=True)
+                else:
+                    st.write('<div style="margin-top: 4px;"></div>', unsafe_allow_html=True)
+                
+                if st.button("➕", key=f"btn_add_dalina_{evento['id']}_{i}"):
+                    # Guardar lo que escribió antes de agregar el nuevo cuadro
+                    st.session_state[state_key] = dalinas_actualizadas + [""]
+                    # Mantener el modal abierto asignando nuevamente el diálogo
+                    modal_asignar_personal(evento)
+                    return
 
-        opciones_animadores = ["Ninguno(a)", "Madai", "Martha", "Eusy", "Antonio", "Jair", "Britny", "Gina"]
-        animador_previo = p_data.get("animador", "Ninguno(a)")
-        idx_animador = opciones_animadores.index(animador_previo) if animador_previo in opciones_animadores else 0
+    # Sincronizar el estado actual
+    st.session_state[state_key] = dalinas_actualizadas
 
-        animador = st.selectbox("🎤 Animador(a):", opciones_animadores, index=idx_animador)
-        dj = st.text_input("🎧 DJ:", value=p_data.get("dj", ""), placeholder="Nombre DJ")
-        staff = st.text_input("🛠️ Staff:", value=p_data.get("staff", ""), placeholder="Nombre Staff")
-        duracion = st.text_input("⏳ Duración:", value=p_data.get("duracion", ""), placeholder="ej. 2 Horas")
-        detalles = st.text_area("📝 Detalles:", value=p_data.get("detalles", ""), placeholder="Observaciones...")
+    st.write("")
 
-        btn_guardar = st.form_submit_button("💾 Guardar Datos", type="primary", use_container_width=True)
+    # Selector de Animadores
+    opciones_animadores = ["Ninguno(a)", "Madai", "Martha", "Eusy", "Antonio", "Jair", "Britny", "Gina"]
+    animador_previo = p_data.get("animador", "Ninguno(a)")
+    idx_animador = opciones_animadores.index(animador_previo) if animador_previo in opciones_animadores else 0
 
-        if btn_guardar:
-            payload = {
-                "num_dalinas": len(dalinas_ingresadas),
-                "dalinas": ", ".join(dalinas_ingresadas),
-                "animador": animador,
-                "dj": dj,
-                "staff": staff,
-                "duracion": duracion,
-                "detalles": detalles
-            }
-            guardar_personal(evento["id"], payload)
-            if cnt_key in st.session_state:
-                del st.session_state[cnt_key]
-            st.rerun()
+    animador = st.selectbox("🎤 Animador(a):", opciones_animadores, index=idx_animador, key=f"sel_anim_{evento['id']}")
+    dj = st.text_input("🎧 DJ:", value=p_data.get("dj", ""), placeholder="Nombre DJ", key=f"in_dj_{evento['id']}")
+    staff = st.text_input("🛠️ Staff:", value=p_data.get("staff", ""), placeholder="Nombre Staff", key=f"in_staff_{evento['id']}")
+    duracion = st.text_input("⏳ Duración:", value=p_data.get("duracion", ""), placeholder="ej. 2 Horas", key=f"in_dur_{evento['id']}")
+    detalles = st.text_area("📝 Detalles:", value=p_data.get("detalles", ""), placeholder="Observaciones...", key=f"in_det_{evento['id']}")
+
+    st.write("")
+    if st.button("💾 Guardar Datos", type="primary", use_container_width=True, key=f"btn_save_{evento['id']}"):
+        dalinas_validas = [d.strip() for d in st.session_state[state_key] if d.strip()]
+        
+        payload = {
+            "num_dalinas": len(dalinas_validas),
+            "dalinas": ", ".join(dalinas_validas),
+            "animador": animador,
+            "dj": dj,
+            "staff": staff,
+            "duracion": duracion,
+            "detalles": detalles
+        }
+        guardar_personal(evento["id"], payload)
+        
+        # Limpiar la memoria de la sesión al guardar
+        if state_key in st.session_state:
+            del st.session_state[state_key]
+            
+        st.rerun()
 
 # Modal Ficha Detallada
 @st.dialog("Ficha Detallada del Evento")
