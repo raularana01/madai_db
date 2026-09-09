@@ -9,42 +9,43 @@ st.set_page_config(
     layout="wide"
 )
 
-# Estilos CSS para imitar la tarjeta púrpura con datos alineados
+# Estilos CSS idénticos a las capturas
 st.markdown("""
     <style>
+    /* Estilo de la tarjeta violeta */
     .card-box {
-        background-color: #F3EAF8;
+        background-color: #EBD9F3;
         border-radius: 12px;
         padding: 16px;
-        margin-bottom: 15px;
-        border: 1px solid #E2D0F0;
+        margin-bottom: 12px;
+        color: #111111;
+        box-shadow: 0px 2px 5px rgba(0,0,0,0.05);
     }
     .badge-marca {
         background-color: #7B2CBF;
         color: white;
-        padding: 6px 14px;
-        border-radius: 8px;
+        padding: 4px 12px;
+        border-radius: 6px;
         font-weight: bold;
-        font-size: 13px;
-        text-align: center;
+        font-size: 12px;
         text-transform: uppercase;
-        display: inline-block;
     }
     .event-title {
-        font-size: 18px;
+        font-size: 17px;
         font-weight: bold;
-        color: #111111;
-        margin-bottom: 8px;
+        color: #000000;
+        margin-bottom: 6px;
     }
     .data-line {
-        font-size: 14px;
-        color: #222222;
+        font-size: 13.5px;
+        color: #111111;
         margin-bottom: 4px;
+        line-height: 1.4;
     }
     </style>
 """, unsafe_allow_html=True)
 
-# 2. Conexión a Supabase mediante Secrets
+# 2. Conexión a Supabase
 @st.cache_resource
 def init_supabase() -> Client:
     url = st.secrets["SUPABASE_URL"]
@@ -70,38 +71,64 @@ def guardar_personal(evento_id, data_personal):
     res = supabase.table("personal").upsert(data_personal, on_conflict="evento_id").execute()
     return res.data
 
-# 4. Modales (Dialogs)
-@st.dialog("Asignar Personal")
+# 4. Modal para Asignar Personal
+@st.dialog("👤 Asignar Personal al Evento")
 def modal_asignar_personal(evento):
-    st.subheader(f"Evento: {evento['evento']} ({evento['fecha']})")
-    
     p_previo = evento.get("personal", [])
     p_data = p_previo[0] if isinstance(p_previo, list) and len(p_previo) > 0 else {}
 
-    with st.form("form_personal"):
-        num_dalinas = st.number_input("Número de Dalinas", min_value=0, max_value=10, value=int(p_data.get("num_dalinas", 1)))
-        dalinas = st.text_input("Nombre de Dalina(s)", value=p_data.get("dalinas", ""))
-        animador = st.text_input("Animador(a)", value=p_data.get("animador", ""))
-        dj = st.text_input("DJ / Sonido", value=p_data.get("dj", ""))
-        staff = st.text_input("Staff / Apoyo", value=p_data.get("staff", ""))
-        duracion = st.text_input("Duración del Show", value=p_data.get("duracion", "2 horas"))
-        detalles = st.text_area("Detalles / Indicaciones Especiales", value=p_data.get("detalles", ""))
-        
-        submitted = st.form_submit_button("Guardar Personal", use_container_width=True)
-        if submitted:
-            payload = {
-                "num_dalinas": num_dalinas,
-                "dalinas": dalinas,
-                "animador": animador,
-                "dj": dj,
-                "staff": staff,
-                "duracion": duracion,
-                "detalles": detalles
-            }
-            guardar_personal(evento["id"], payload)
-            st.success("¡Personal asignado con éxito!")
+    # Manejo de múltiples Dalinas
+    dalinas_existentes = p_data.get("dalinas", "")
+    lista_dalinas_previa = [d.strip() for d in dalinas_existentes.split(",") if d.strip()] if dalinas_existentes else [""]
+    
+    if "num_dalinas_input" not in st.session_state:
+        st.session_state.num_dalinas_input = max(len(lista_dalinas_previa), 1)
+
+    cant_dalinas = st.session_state.num_dalinas_input
+    st.markdown(f"**💃 Dalinas ({cant_dalinas}/7):**")
+    
+    dalinas_respuestas = []
+    for i in range(cant_dalinas):
+        val_default = lista_dalinas_previa[i] if i < len(lista_dalinas_previa) else ""
+        d_val = st.text_input(f"Dalina {i+1}", value=val_default, placeholder=f"Nombre Dalina {i+1}", key=f"dalina_in_{i}")
+        if d_val.strip():
+            dalinas_respuestas.append(d_val.strip())
+
+    if cant_dalinas < 7:
+        if st.button("➕ Agregar Dalina", use_container_width=True):
+            st.session_state.num_dalinas_input += 1
             st.rerun()
 
+    st.divider()
+
+    # Opciones de Selector de Animadores idénticas a la imagen
+    opciones_animadores = ["Ninguno(a)", "Madai", "Martha", "Eusy", "Antonio", "Jair", "Britny", "Gina"]
+    animador_previo = p_data.get("animador", "Ninguno(a)")
+    idx_animador = opciones_animadores.index(animador_previo) if animador_previo in opciones_animadores else 0
+
+    animador = st.selectbox("🎤 Animador(a):", opciones_animadores, index=idx_animador)
+    dj = st.text_input("🎧 DJ:", value=p_data.get("dj", ""), placeholder="Nombre DJ")
+    staff = st.text_input("🛠️ Staff:", value=p_data.get("staff", ""), placeholder="Nombre Staff")
+    duracion = st.text_input("⏳ Duración:", value=p_data.get("duracion", ""), placeholder="ej. 2 Horas")
+    detalles = st.text_area("📝 Detalles:", value=p_data.get("detalles", ""), placeholder="Observaciones...")
+
+    st.write("")
+    if st.button("💾 Guardar Datos", type="primary", use_container_width=True):
+        payload = {
+            "num_dalinas": len(dalinas_respuestas),
+            "dalinas": ", ".join(dalinas_respuestas),
+            "animador": animador,
+            "dj": dj,
+            "staff": staff,
+            "duracion": duracion,
+            "detalles": detalles
+        }
+        guardar_personal(evento["id"], payload)
+        if "num_dalinas_input" in st.session_state:
+            del st.session_state["num_dalinas_input"]
+        st.rerun()
+
+# Modal para Ficha Detallada
 @st.dialog("Ficha Detallada del Evento")
 def modal_ver_ficha(evento):
     st.title(f"📌 {evento['evento']}")
@@ -128,26 +155,20 @@ def modal_ver_ficha(evento):
 
     st.divider()
     st.markdown("### 👥 Personal Asignado")
-    
     p_lista = evento.get("personal", [])
     if isinstance(p_lista, list) and len(p_lista) > 0:
         p = p_lista[0]
-        st.write(f"• **N° Dalinas:** {p.get('num_dalinas', 'N/A')} ({p.get('dalinas', '-')})")
-        st.write(f"• **Animador(a):** {p.get('animador', 'N/A')}")
+        st.write(f"• **N° Dalinas:** {p.get('num_dalinas', 0)} ({p.get('dalinas', 'Ninguna')})")
+        st.write(f"• **Animador(a):** {p.get('animador', 'Ninguno(a)')}")
         st.write(f"• **DJ:** {p.get('dj', 'N/A')}")
         st.write(f"• **Staff:** {p.get('staff', 'N/A')}")
         st.write(f"• **Duración:** {p.get('duracion', 'N/A')}")
         if p.get('detalles'):
-            st.info(f"**Notas del Personal:** {p.get('detalles')}")
+            st.info(f"**Notas:** {p.get('detalles')}")
     else:
         st.warning("Aún no se ha asignado personal a este evento.")
 
-    if evento.get('descripcion'):
-        st.divider()
-        st.markdown("### 📝 Descripción General")
-        st.write(evento['descripcion'])
-
-# 5. Interfaz Principal
+# 5. Vista Principal
 st.title("📅 Agenda Madai")
 
 tab1, tab2 = st.tabs(["📋 Lista de Eventos", "➕ Registrar Evento"])
@@ -161,58 +182,39 @@ with tab1:
         cols = st.columns(2)
         for idx, ev in enumerate(eventos):
             with cols[idx % 2]:
-                with st.container(border=True):
-                    # 1. Cabecera con Título, Fecha, Tipo y Etiqueta de Marca
-                    col_head1, col_head2 = st.columns([3, 1])
-                    with col_head1:
-                        tipo_str = f"({ev.get('tipo', 'Evento')})" if ev.get('tipo') else ""
-                        st.markdown(f"### 🗓️ {ev['fecha']} | 🎉 {ev['evento']} {tipo_str}")
-                    with col_head2:
-                        marca_nombre = ev.get('marca', 'MADAI')
-                        st.markdown(f"<div style='text-align: right;'><span class='badge-marca'>🏷️ {marca_nombre}</span></div>", unsafe_allow_html=True)
+                costo = float(ev.get('costo_total', 0) or 0)
+                adelanto = float(ev.get('monto_adelanto', 0) or 0)
+                pendiente = costo - adelanto
+                tipo_str = f"({ev.get('tipo', 'Show')})" if ev.get('tipo') else ""
+                
+                # Renderizado HTML con la estructura exacta de la imagen
+                st.markdown(f"""
+                    <div class="card-box">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <div class="event-title">🎉 {ev['evento']} {tipo_str}</div>
+                            <span class="badge-marca">{ev.get('marca', 'RISUEÑA')}</span>
+                        </div>
+                        <div class="data-line">⏰ <b>Hora Contrato:</b> {ev.get('hora_contrato', '04:30 PM')} | <b>Citación:</b> {ev.get('hora_citacion', '04:00 PM')}</div>
+                        <div class="data-line">👤 <b>Cliente:</b> {ev.get('cliente', 'N/A')} | 📱 <b>Tel:</b> {ev.get('telefono', 'N/A')}</div>
+                        <div class="data-line">📍 <b>Lugar:</b> {ev.get('direccion', 'N/A')} | 💰 <b>Total: S/ {costo:.0f}</b> | <b>Pendiente: S/ {pendiente:.0f}</b></div>
+                    </div>
+                """, unsafe_allow_html=True)
 
-                    # 2. Datos ordenados correctamente
-                    costo = float(ev.get('costo_total', 0) or 0)
-                    adelanto = float(ev.get('monto_adelanto', 0) or 0)
-                    estado_pago = "Pagado" if adelanto >= costo and costo > 0 else ("Pago parcial" if adelanto > 0 else "Pendiente")
+                # Botones en bloque como la captura
+                if st.button("👤 Asignar Personal", key=f"pers_{ev['id']}", use_container_width=True):
+                    modal_asignar_personal(ev)
+                
+                if st.button("📋 Ver Ficha", key=f"ver_{ev['id']}", use_container_width=True):
+                    modal_ver_ficha(ev)
 
-                    st.markdown(f"""
-                        <div class='data-line'>⏰ <b>Hora Contrato:</b> {ev.get('hora_contrato', 'N/A')} | <b>Citación:</b> {ev.get('hora_citacion', 'N/A')}</div>
-                        <div class='data-line'>👤 <b>Cliente:</b> {ev.get('cliente', 'N/A')} | 📱 <b>Tel:</b> {ev.get('telefono', 'N/A')}</div>
-                        <div class='data-line'>📍 <b>Lugar:</b> {ev.get('direccion', 'N/A')}</div>
-                        <div class='data-line'>💰 <b>Total:</b> S/ {costo:.0f} | <b>Estado:</b> {estado_pago}</div>
-                    """, unsafe_allow_html=True)
-
-                    st.write("")
-
-                    # 3. Estado de Personal
-                    p_info = ev.get("personal", [])
-                    tiene_personal = isinstance(p_info, list) and len(p_info) > 0
-                    if tiene_personal:
-                        st.success("👥 Personal asignado", icon="✅")
-                    else:
-                        st.warning("⚠️ Personal no asignado")
-
-                    st.divider()
-
-                    # 4. Botones
-                    b_col1, b_col2, b_col3 = st.columns([4, 4, 1])
-                    if b_col1.button("👤 Personal", key=f"pers_{ev['id']}", use_container_width=True):
-                        modal_asignar_personal(ev)
-                    
-                    if b_col2.button("👁️ Ver Ficha", key=f"ver_{ev['id']}", use_container_width=True):
-                        modal_ver_ficha(ev)
-                        
-                    if b_col3.button("🗑️", key=f"del_{ev['id']}", help="Eliminar evento"):
-                        eliminar_evento(ev['id'])
-                        st.rerun()
+                st.write("")
 
 with tab2:
     st.header("Registrar Nuevo Evento")
     with st.form("form_nuevo_evento"):
         col_a, col_b = st.columns(2)
         with col_a:
-            marca = st.selectbox("Marca", ["Decoraciones MADAI", "Otra"])
+            marca = st.selectbox("Marca", ["Decoraciones MADAI", "RISUEÑA", "Otra"])
             fecha = st.date_input("Fecha del Evento")
             tipo = st.text_input("Tipo de Evento", value="Show")
             evento = st.text_input("Nombre del Evento / Cumpleañero(a)")
@@ -220,11 +222,11 @@ with tab2:
             telefono = st.text_input("Teléfono")
         
         with col_b:
-            hora_contrato = st.text_input("Hora Contrato", value="04:00 PM")
-            hora_citacion = st.text_input("Hora Citación", value="03:30 PM")
+            hora_contrato = st.text_input("Hora Contrato", value="04:30 PM")
+            hora_citacion = st.text_input("Hora Citación", value="04:00 PM")
             direccion = st.text_input("Dirección / Ubicación")
-            costo_total = st.number_input("Costo Total (S/)", min_value=0.0, step=10.0)
-            monto_adelanto = st.number_input("Monto Adelanto (S/)", min_value=0.0, step=10.0)
+            costo_total = st.number_input("Costo Total (S/)", min_value=0.0, step=10.0, value=300.0)
+            monto_adelanto = st.number_input("Monto Adelanto (S/)", min_value=0.0, step=10.0, value=100.0)
             concepto_alquiler = st.text_input("Concepto / Alquiler", value="Show Infantil Completo")
         
         descripcion = st.text_area("Notas adicionales del evento")
