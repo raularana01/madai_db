@@ -53,7 +53,7 @@ def init_supabase() -> Client:
 
 supabase = init_supabase()
 
-# 3. Funciones de BD
+# 3. Funciones de Base de Datos
 def obtener_eventos():
     response = supabase.table("eventos").select("*, personal(*)").order("fecha", desc=False).execute()
     return response.data
@@ -62,86 +62,78 @@ def guardar_evento(datos_evento):
     res = supabase.table("eventos").insert(datos_evento).execute()
     return res.data
 
-def eliminar_evento(evento_id):
-    supabase.table("eventos").delete().eq("id", evento_id).execute()
-
 def guardar_personal(evento_id, data_personal):
     data_personal["evento_id"] = evento_id
     res = supabase.table("personal").upsert(data_personal, on_conflict="evento_id").execute()
     return res.data
 
-# 4. Modal de Asignar Personal Corregido
+# 4. Modal para Asignar Personal (Fix con st.form)
 @st.dialog("👤 Asignar Personal al Evento")
 def modal_asignar_personal(evento):
     p_previo = evento.get("personal", [])
     p_data = p_previo[0] if isinstance(p_previo, list) and len(p_previo) > 0 else {}
 
-    # Clave única en session_state para las dalinas de este evento
-    state_key = f"dalinas_list_{evento['id']}"
-    
-    if state_key not in st.session_state:
+    # Estado persistente para la cantidad de campos de Dalina
+    cnt_key = f"cant_dalinas_{evento['id']}"
+    if cnt_key not in st.session_state:
         dalinas_existentes = p_data.get("dalinas", "")
-        if dalinas_existentes:
-            st.session_state[state_key] = [d.strip() for d in dalinas_existentes.split(",") if d.strip()]
-        else:
-            st.session_state[state_key] = [""]
+        lista_inicial = [d.strip() for d in dalinas_existentes.split(",") if d.strip()] if dalinas_existentes else [""]
+        st.session_state[cnt_key] = max(len(lista_inicial), 1)
 
-    dalinas_list = st.session_state[state_key]
-    cant_dalinas = len(dalinas_list)
-    
+    cant_dalinas = st.session_state[cnt_key]
+
+    # Botón fuera del Form para agregar casilleros sin cerrar el modal
     st.markdown(f"**💃 Dalinas ({cant_dalinas}/7):**")
-    
-    # Renderizamos los inputs para cada Dalina y guardamos cambios en tiempo real
-    for i in range(cant_dalinas):
-        val_actual = dalinas_list[i]
-        nuevo_val = st.text_input(
-            f"Dalina {i+1}", 
-            value=val_actual, 
-            placeholder=f"Nombre Dalina {i+1}", 
-            key=f"dalina_in_{evento['id']}_{i}"
-        )
-        st.session_state[state_key][i] = nuevo_val
-
-    # Botón para agregar una nueva dalina sin perder los datos ya escritos
     if cant_dalinas < 7:
-        if st.button("➕ Agregar Dalina", use_container_width=True):
-            st.session_state[state_key].append("")
+        if st.button("➕ Agregar Dalina", key=f"btn_add_{evento['id']}"):
+            st.session_state[cnt_key] += 1
             st.rerun()
 
-    st.divider()
+    # Formulario principal de captura
+    with st.form(key=f"form_personal_{evento['id']}"):
+        dalinas_ingresadas = []
+        dalinas_existentes = p_data.get("dalinas", "")
+        lista_previa = [d.strip() for d in dalinas_existentes.split(",") if d.strip()] if dalinas_existentes else []
 
-    # Opciones del Selector de Animadores
-    opciones_animadores = ["Ninguno(a)", "Madai", "Martha", "Eusy", "Antonio", "Jair", "Britny", "Gina"]
-    animador_previo = p_data.get("animador", "Ninguno(a)")
-    idx_animador = opciones_animadores.index(animador_previo) if animador_previo in opciones_animadores else 0
+        for i in range(cant_dalinas):
+            val_def = lista_previa[i] if i < len(lista_previa) else ""
+            d_val = st.text_input(
+                f"Dalina {i+1}", 
+                value=val_def, 
+                placeholder=f"Nombre Dalina {i+1}", 
+                key=f"in_dalina_{evento['id']}_{i}"
+            )
+            if d_val.strip():
+                dalinas_ingresadas.append(d_val.strip())
 
-    animador = st.selectbox("🎤 Animador(a):", opciones_animadores, index=idx_animador)
-    dj = st.text_input("🎧 DJ:", value=p_data.get("dj", ""), placeholder="Nombre DJ")
-    staff = st.text_input("🛠️ Staff:", value=p_data.get("staff", ""), placeholder="Nombre Staff")
-    duracion = st.text_input("⏳ Duración:", value=p_data.get("duracion", ""), placeholder="ej. 2 Horas")
-    detalles = st.text_area("📝 Detalles:", value=p_data.get("detalles", ""), placeholder="Observaciones...")
+        st.divider()
 
-    st.write("")
-    if st.button("💾 Guardar Datos", type="primary", use_container_width=True):
-        # Filtramos dalinas que no estén vacías
-        dalinas_validas = [d.strip() for d in st.session_state[state_key] if d.strip()]
-        
-        payload = {
-            "num_dalinas": len(dalinas_validas),
-            "dalinas": ", ".join(dalinas_validas),
-            "animador": animador,
-            "dj": dj,
-            "staff": staff,
-            "duracion": duracion,
-            "detalles": detalles
-        }
-        guardar_personal(evento["id"], payload)
-        
-        # Limpiamos el estado temporal del modal
-        if state_key in st.session_state:
-            del st.session_state[state_key]
-            
-        st.rerun()
+        opciones_animadores = ["Ninguno(a)", "Madai", "Martha", "Eusy", "Antonio", "Jair", "Britny", "Gina"]
+        animador_previo = p_data.get("animador", "Ninguno(a)")
+        idx_animador = opciones_animadores.index(animador_previo) if animador_previo in opciones_animadores else 0
+
+        animador = st.selectbox("🎤 Animador(a):", opciones_animadores, index=idx_animador)
+        dj = st.text_input("🎧 DJ:", value=p_data.get("dj", ""), placeholder="Nombre DJ")
+        staff = st.text_input("🛠️ Staff:", value=p_data.get("staff", ""), placeholder="Nombre Staff")
+        duracion = st.text_input("⏳ Duración:", value=p_data.get("duracion", ""), placeholder="ej. 2 Horas")
+        detalles = st.text_area("📝 Detalles:", value=p_data.get("detalles", ""), placeholder="Observaciones...")
+
+        btn_guardar = st.form_submit_button("💾 Guardar Datos", type="primary", use_container_width=True)
+
+        if btn_guardar:
+            payload = {
+                "num_dalinas": len(dalinas_ingresadas),
+                "dalinas": ", ".join(dalinas_ingresadas),
+                "animador": animador,
+                "dj": dj,
+                "staff": staff,
+                "duracion": duracion,
+                "detalles": detalles
+            }
+            guardar_personal(evento["id"], payload)
+            if cnt_key in st.session_state:
+                del st.session_state[cnt_key]
+            st.rerun()
 
 # Modal Ficha Detallada
 @st.dialog("Ficha Detallada del Evento")
@@ -213,10 +205,10 @@ with tab1:
                     </div>
                 """, unsafe_allow_html=True)
 
-                if st.button("👤 Asignar Personal", key=f"pers_{ev['id']}", use_container_width=True):
+                if st.button("👤 Asignar Personal", key=f"btn_pers_{ev['id']}", use_container_width=True):
                     modal_asignar_personal(ev)
                 
-                if st.button("📋 Ver Ficha", key=f"ver_{ev['id']}", use_container_width=True):
+                if st.button("📋 Ver Ficha", key=f"btn_ver_{ev['id']}", use_container_width=True):
                     modal_ver_ficha(ev)
 
                 st.write("")
