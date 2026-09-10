@@ -68,16 +68,16 @@ def guardar_evento(datos_evento):
 
 def guardar_personal(evento_id, data_personal):
     try:
-        # Convertir a int para asegurar concordancia con la Foreign Key de Supabase
         e_id = int(evento_id)
+        # Aseguramos que evento_id SIEMPRE esté en el diccionario
+        data_personal["evento_id"] = e_id
         
-        # Consultar si ya existe registro
+        # Verificar si ya existe registro
         existente = supabase.table("personal").select("id").eq("evento_id", e_id).execute()
         
         if existente.data and len(existente.data) > 0:
             res = supabase.table("personal").update(data_personal).eq("evento_id", e_id).execute()
         else:
-            data_personal["evento_id"] = e_id
             res = supabase.table("personal").insert(data_personal).execute()
             
         return True, "Personal asignado correctamente"
