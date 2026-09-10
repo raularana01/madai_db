@@ -47,15 +47,15 @@ st.markdown("""
 # 2. Conexión a Supabase
 @st.cache_resource
 def init_supabase() -> Client:
-    url = st.secrets["SUPABASE_URL"]
-    key = st.secrets["SUPABASE_KEY"]
-    return create_client(url, key)
+    try:
+        url = st.secrets["SUPABASE_URL"]
+        key = st.secrets["SUPABASE_KEY"]
+        return create_client(url, key)
+    except Exception as e:
+        st.error(f"⚠️ Error al conectar con Supabase. Revisa Secrets. Detalle: {e}")
+        st.stop()
 
-try:
-    supabase = init_supabase()
-except Exception as e:
-    st.error(f"Error al conectar con Supabase. Revisa tus secretos en Streamlit Cloud. Detalle: {e}")
-    st.stop()
+supabase = init_supabase()
 
 # 3. Funciones de Base de Datos
 def obtener_eventos():
@@ -67,15 +67,20 @@ def guardar_evento(datos_evento):
     return res.data
 
 def guardar_personal(evento_id, data_personal):
-    existente = supabase.table("personal").select("id").eq("evento_id", evento_id).execute()
-    if existente.data and len(existente.data) > 0:
-        res = supabase.table("personal").update(data_personal).eq("evento_id", evento_id).execute()
-    else:
-        data_personal["evento_id"] = evento_id
-        res = supabase.table("personal").insert(data_personal).execute()
-    return res.data
+    try:
+        existente = supabase.table("personal").select("id").eq("evento_id", evento_id).execute()
+        
+        if existente.data and len(existente.data) > 0:
+            res = supabase.table("personal").update(data_personal).eq("evento_id", evento_id).execute()
+        else:
+            data_personal["evento_id"] = evento_id
+            res = supabase.table("personal").insert(data_personal).execute()
+            
+        return True, "Personal guardado correctamente"
+    except Exception as e:
+        return False, str(e)
 
-# Callback para agregar Dalinas sin recargar la pantalla entera
+# Callback para agregar campos de Dalina en tiempo real
 def agregar_dalina_callback(state_key):
     if len(st.session_state[state_key]) < 7:
         st.session_state[state_key].append("")
@@ -88,6 +93,7 @@ def modal_asignar_personal(evento):
 
     state_key = f"dalinas_lista_{evento['id']}"
 
+    # Cargar datos guardados o inicializar 1 campo
     if state_key not in st.session_state:
         dalinas_existentes = p_data.get("dalinas", "")
         if dalinas_existentes:
@@ -100,6 +106,7 @@ def modal_asignar_personal(evento):
 
     st.markdown(f"**💃 Dalinas ({cant}/7):**")
 
+    # Inputs para Dalinas + Botón '+'
     for i in range(cant):
         if i == cant - 1 and cant < 7:
             col_in, col_btn = st.columns([5, 1])
@@ -132,6 +139,7 @@ def modal_asignar_personal(evento):
 
     st.write("")
 
+    # Selección de Animadores
     opciones_animadores = ["Ninguno(a)", "Madai", "Martha", "Eusy", "Antonio", "Jair", "Britny", "Gina"]
     animador_previo = p_data.get("animador", "Ninguno(a)")
     idx_animador = opciones_animadores.index(animador_previo) if animador_previo in opciones_animadores else 0
@@ -155,12 +163,16 @@ def modal_asignar_personal(evento):
             "duracion": duracion,
             "detalles": detalles
         }
-        guardar_personal(evento["id"], payload)
         
-        if state_key in st.session_state:
-            del st.session_state[state_key]
-            
-        st.rerun()
+        exito, msg = guardar_personal(evento["id"], payload)
+        
+        if exito:
+            st.success("✅ ¡Personal guardado correctamente!")
+            if state_key in st.session_state:
+                del st.session_state[state_key]
+            st.rerun()
+        else:
+            st.error(f"❌ Error al guardar en Supabase: {msg}")
 
 # Modal Ficha Detallada
 @st.dialog("Ficha Detallada del Evento")
