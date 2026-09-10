@@ -69,10 +69,9 @@ def guardar_evento(datos_evento):
 def guardar_personal(evento_id, data_personal):
     try:
         e_id = int(evento_id)
-        # Aseguramos que evento_id SIEMPRE esté en el diccionario
         data_personal["evento_id"] = e_id
         
-        # Verificar si ya existe registro
+        # Consultar si ya existe registro
         existente = supabase.table("personal").select("id").eq("evento_id", e_id).execute()
         
         if existente.data and len(existente.data) > 0:
@@ -179,16 +178,23 @@ def modal_asignar_personal(evento):
             st.error(f"❌ Error al guardar en Supabase: {msg}")
 
 # Modal Ficha Detallada
+# Modal Ficha Detallada
 @st.dialog("Ficha Detallada del Evento")
 def modal_ver_ficha(evento_id):
-    # Traer el evento y su personal actualizado en el instante
-    res = supabase.table("eventos").select("*, personal(*)").eq("id", int(evento_id)).execute()
+    e_id = int(evento_id)
     
-    if not res.data:
+    # 1. Consultar evento
+    res_evento = supabase.table("eventos").select("*").eq("id", e_id).execute()
+    
+    if not res_evento.data:
         st.error("No se encontró el evento.")
         return
 
-    evento = res.data[0]
+    evento = res_evento.data[0]
+
+    # 2. Consultar personal directamente por evento_id
+    res_personal = supabase.table("personal").select("*").eq("evento_id", e_id).execute()
+    p_lista = res_personal.data
 
     st.title(f"📌 {evento.get('evento', 'Sin Nombre')}")
     st.caption(f"Marca: {evento.get('marca', 'N/A')} | Fecha: {evento.get('fecha', 'N/A')}")
@@ -214,10 +220,7 @@ def modal_ver_ficha(evento_id):
     st.divider()
     st.markdown("### 👥 Personal Asignado")
     
-    # Extraer la lista de personal vinculada
-    p_lista = evento.get("personal", [])
-    
-    if isinstance(p_lista, list) and len(p_lista) > 0:
+    if p_lista and len(p_lista) > 0:
         p = p_lista[0]
         st.write(f"• **N° Dalinas:** {p.get('num_dalinas', 0)} ({p.get('dalinas', 'Ninguna')})")
         st.write(f"• **Animador(a):** {p.get('animador', 'Ninguno(a)')}")
