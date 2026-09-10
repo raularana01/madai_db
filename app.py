@@ -68,6 +68,7 @@ def guardar_evento(datos_evento):
 
 def guardar_personal(evento_id, data_personal):
     try:
+        # Verificar si ya existe un registro para este evento
         existente = supabase.table("personal").select("id").eq("evento_id", evento_id).execute()
         
         if existente.data and len(existente.data) > 0:
@@ -76,7 +77,7 @@ def guardar_personal(evento_id, data_personal):
             data_personal["evento_id"] = evento_id
             res = supabase.table("personal").insert(data_personal).execute()
             
-        return True, "Personal guardado correctamente"
+        return True, "Guardado con éxito"
     except Exception as e:
         return False, str(e)
 
