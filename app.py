@@ -264,7 +264,7 @@ with tab1:
                     modal_asignar_personal(ev)
                 
                 if st.button("📋 Ver Ficha", key=f"btn_ver_{ev['id']}", use_container_width=True):
-    modal_ver_ficha(ev['id'])
+                    modal_ver_ficha(ev['id'])
 
                 st.write("")
 
