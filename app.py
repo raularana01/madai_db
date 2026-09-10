@@ -41,11 +41,6 @@ st.markdown("""
         margin-bottom: 4px;
         line-height: 1.4;
     }
-    /* Reducir márgenes verticales en inputs para un diseño compacto */
-    .stTextInput > div > div > input {
-        padding-top: 6px;
-        padding-bottom: 6px;
-    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -72,7 +67,12 @@ def guardar_personal(evento_id, data_personal):
     res = supabase.table("personal").upsert(data_personal, on_conflict="evento_id").execute()
     return res.data
 
-# 4. Modal para Asignar Personal
+# Callback para agregar un nuevo casillero en tiempo real
+def agregar_dalina_callback(state_key):
+    if len(st.session_state[state_key]) < 7:
+        st.session_state[state_key].append("")
+
+# 4. Modal para Asignar Personal Corregido
 @st.dialog("👤 Asignar Personal al Evento")
 def modal_asignar_personal(evento):
     p_previo = evento.get("personal", [])
@@ -94,25 +94,23 @@ def modal_asignar_personal(evento):
 
     st.markdown(f"**💃 Dalinas ({cant}/7):**")
 
-    dalinas_actualizadas = []
-
     # Renderizado compacto de inputs + botón '+'
     for i in range(cant):
-        # Columnas ajustadas para pegarle el botón '+' al primer input o al último
         if i == cant - 1 and cant < 7:
             col_in, col_btn = st.columns([5, 1])
         else:
-            col_in, col_btn = st.columns([1, 0.001]) # Columna limpia si no hay botón
+            col_in, col_btn = st.columns([1, 0.0001])
 
         with col_in:
-            val = st.text_input(
+            val_actual = st.session_state[state_key][i]
+            # Capturar el texto ingresado directamente en el session_state
+            st.session_state[state_key][i] = st.text_input(
                 f"Dalina {i+1}", 
-                value=dalinas[i], 
+                value=val_actual, 
                 placeholder=f"Nombre Dalina {i+1}", 
                 key=f"dal_in_{evento['id']}_{i}",
                 label_visibility="collapsed" if i > 0 else "visible"
             )
-            dalinas_actualizadas.append(val)
 
         if i == cant - 1 and cant < 7:
             with col_btn:
@@ -122,15 +120,13 @@ def modal_asignar_personal(evento):
                 else:
                     st.write('<div style="margin-top: 4px;"></div>', unsafe_allow_html=True)
                 
-                if st.button("➕", key=f"btn_add_dalina_{evento['id']}_{i}"):
-                    # Guardar lo que escribió antes de agregar el nuevo cuadro
-                    st.session_state[state_key] = dalinas_actualizadas + [""]
-                    # Mantener el modal abierto asignando nuevamente el diálogo
-                    modal_asignar_personal(evento)
-                    return
-
-    # Sincronizar el estado actual
-    st.session_state[state_key] = dalinas_actualizadas
+                # Uso de on_click para evitar anidamiento de diálogos
+                st.button(
+                    "➕", 
+                    key=f"btn_add_dalina_{evento['id']}_{i}", 
+                    on_click=agregar_dalina_callback, 
+                    args=(state_key,)
+                )
 
     st.write("")
 
@@ -160,7 +156,7 @@ def modal_asignar_personal(evento):
         }
         guardar_personal(evento["id"], payload)
         
-        # Limpiar la memoria de la sesión al guardar
+        # Limpiar la memoria del estado al guardar
         if state_key in st.session_state:
             del st.session_state[state_key]
             
