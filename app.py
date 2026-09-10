@@ -68,16 +68,19 @@ def guardar_evento(datos_evento):
 
 def guardar_personal(evento_id, data_personal):
     try:
-        # Verificar si ya existe un registro para este evento
-        existente = supabase.table("personal").select("id").eq("evento_id", evento_id).execute()
+        # Convertir a int para asegurar concordancia con la Foreign Key de Supabase
+        e_id = int(evento_id)
+        
+        # Consultar si ya existe registro
+        existente = supabase.table("personal").select("id").eq("evento_id", e_id).execute()
         
         if existente.data and len(existente.data) > 0:
-            res = supabase.table("personal").update(data_personal).eq("evento_id", evento_id).execute()
+            res = supabase.table("personal").update(data_personal).eq("evento_id", e_id).execute()
         else:
-            data_personal["evento_id"] = evento_id
+            data_personal["evento_id"] = e_id
             res = supabase.table("personal").insert(data_personal).execute()
             
-        return True, "Guardado con éxito"
+        return True, "Personal asignado correctamente"
     except Exception as e:
         return False, str(e)
 
@@ -177,9 +180,18 @@ def modal_asignar_personal(evento):
 
 # Modal Ficha Detallada
 @st.dialog("Ficha Detallada del Evento")
-def modal_ver_ficha(evento):
-    st.title(f"📌 {evento['evento']}")
-    st.caption(f"Marca: {evento['marca']} | Fecha: {evento['fecha']}")
+def modal_ver_ficha(evento_id):
+    # Traer el evento y su personal actualizado en el instante
+    res = supabase.table("eventos").select("*, personal(*)").eq("id", int(evento_id)).execute()
+    
+    if not res.data:
+        st.error("No se encontró el evento.")
+        return
+
+    evento = res.data[0]
+
+    st.title(f"📌 {evento.get('evento', 'Sin Nombre')}")
+    st.caption(f"Marca: {evento.get('marca', 'N/A')} | Fecha: {evento.get('fecha', 'N/A')}")
     
     col1, col2 = st.columns(2)
     with col1:
@@ -201,7 +213,10 @@ def modal_ver_ficha(evento):
 
     st.divider()
     st.markdown("### 👥 Personal Asignado")
+    
+    # Extraer la lista de personal vinculada
     p_lista = evento.get("personal", [])
+    
     if isinstance(p_lista, list) and len(p_lista) > 0:
         p = p_lista[0]
         st.write(f"• **N° Dalinas:** {p.get('num_dalinas', 0)} ({p.get('dalinas', 'Ninguna')})")
@@ -213,7 +228,7 @@ def modal_ver_ficha(evento):
             st.info(f"**Notas:** {p.get('detalles')}")
     else:
         st.warning("Aún no se ha asignado personal a este evento.")
-
+        
 # 5. Vista Principal
 st.title("📅 Agenda Madai")
 
