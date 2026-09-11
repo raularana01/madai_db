@@ -11,7 +11,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Estilos CSS Ultra-Compactos y Ficha en Cuadro
+# Estilos CSS Ultra-Compactos
 st.markdown("""
     <style>
     /* Tarjetas de eventos compactas */
@@ -46,13 +46,6 @@ st.markdown("""
     }
     
     /* Cuadro de la Ficha Detallada */
-    .ficha-container {
-        border: 2px solid #7B2CBF;
-        background-color: #FFFFFF;
-        border-radius: 12px;
-        padding: 16px;
-        box-shadow: 0px 4px 10px rgba(0,0,0,0.08);
-    }
     .ficha-header {
         background-color: #7B2CBF;
         color: white;
@@ -61,22 +54,24 @@ st.markdown("""
         text-align: center;
         font-size: 18px;
         font-weight: bold;
-        margin-bottom: 14px;
+        margin-bottom: 12px;
         text-transform: capitalize;
     }
-    .ficha-item {
-        font-size: 14px;
-        color: #222222;
-        margin-bottom: 6px;
+    .ficha-compact-text {
+        margin-bottom: 2px !important;
+        line-height: 1.35;
     }
-    .ficha-section-title {
+    .titulo-personal-resaltado {
+        background-color: #7B2CBF;
+        color: white;
+        padding: 6px 12px;
+        border-radius: 6px;
         font-size: 15px;
         font-weight: bold;
-        color: #7B2CBF;
-        border-bottom: 1px solid #EBD9F3;
-        padding-bottom: 4px;
         margin-top: 10px;
         margin-bottom: 8px;
+        display: inline-block;
+        width: 100%;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -164,7 +159,7 @@ def agregar_dalina_callback(state_key):
     if len(st.session_state[state_key]) < 7:
         st.session_state[state_key].append("")
 
-# 5. Modal para Asignar Personal (Carga y Mantiene Datos Persistentes)
+# 5. Modal para Asignar Personal (Con Selector de Duración)
 @st.dialog("👤 Asignar Personal al Evento")
 def modal_asignar_personal(evento):
     e_id = int(evento["id"])
@@ -224,7 +219,13 @@ def modal_asignar_personal(evento):
     animador = st.selectbox("🎤 Animador(a):", opciones_animadores, index=idx_animador, key=f"sel_anim_{evento['id']}")
     dj = st.text_input("🎧 DJ:", value=p_data.get("dj", ""), placeholder="Nombre DJ", key=f"in_dj_{evento['id']}")
     staff = st.text_input("🛠️ Staff:", value=p_data.get("staff", ""), placeholder="Nombre Staff", key=f"in_staff_{evento['id']}")
-    duracion = st.text_input("⏳ Duración:", value=p_data.get("duracion", "2 Horas"), placeholder="ej. 2 Horas", key=f"in_dur_{evento['id']}")
+    
+    # Opciones de Duración con Selector
+    opciones_duracion = ["1.5 horas", "2 horas", "2.5 horas", "3 horas"]
+    duracion_previa = p_data.get("duracion", "2 horas").lower()
+    idx_duracion = opciones_duracion.index(duracion_previa) if duracion_previa in opciones_duracion else 1
+    
+    duracion = st.selectbox("⏳ Duración del Show:", opciones_duracion, index=idx_duracion, key=f"sel_dur_{evento['id']}")
     detalles = st.text_area("📝 Detalles:", value=p_data.get("detalles", ""), placeholder="Observaciones...", key=f"in_det_{evento['id']}")
 
     st.write("")
@@ -249,8 +250,7 @@ def modal_asignar_personal(evento):
         else:
             st.error(f"❌ Error al guardar en Supabase: {msg}")
 
-# 6. Modal Ficha Detallada (Diseño de Cuadro con Campos Solicitados Únicamente)
-# 6. Modal Ficha Detallada (Diseño en Cuadro Nativo sin errores de HTML)
+# 6. Modal Ficha Detallada (Sin espacios sobrantes, sin título financiero y con Personal Resaltado)
 @st.dialog("📋 Ficha del Evento")
 def modal_ver_ficha(evento_id):
     e_id = int(evento_id)
@@ -266,7 +266,7 @@ def modal_ver_ficha(evento_id):
 
     # Cálculos
     fecha_formateada = formatear_fecha_larga(evento.get("fecha", ""))
-    duracion_str = p_data.get("duracion", "2 Horas")
+    duracion_str = p_data.get("duracion", "2 horas")
     hora_inicio = evento.get("hora_contrato", "04:30 PM")
     rango_horas = calcular_hora_fin(hora_inicio, duracion_str)
 
@@ -281,21 +281,17 @@ def modal_ver_ficha(evento_id):
         </div>
     """, unsafe_allow_html=True)
 
-    # CUADRO DE CONTENIDO
+    # CUADRO DE CONTENIDO SIN ESPACIOS INNECESARIOS
     with st.container(border=True):
-        st.markdown(f"**🎭 Tipo de Show:** {evento.get('tipo', 'Show Infantil')} ({evento.get('evento', 'Sin Nombre')})")
+        st.markdown(f"**🎭 Tipo de Show:** {evento.get('tipo', 'Show Infantil')} ({evento.get('evento', 'Sin Nombre')})", help=None)
         st.markdown(f"**⏰ Horario del Show:** {rango_horas}")
         st.markdown(f"**📍 Dirección:** {evento.get('direccion', 'N/A')}")
-        
-        st.divider()
-        
-        st.markdown("##### 💰 Información Financiera")
         st.markdown(f"**💵 Monto Adelanto:** S/ {adelanto:.2f}")
         st.markdown(f"**🔴 Saldo Pendiente:** :red[**S/ {pendiente:.2f}**]")
         
-        st.divider()
+        # TÍTULO PERSONAL RESALTADO
+        st.markdown('<div class="titulo-personal-resaltado">👥 Personal Asignado</div>', unsafe_allow_html=True)
         
-        st.markdown("##### 👥 Personal Asignado")
         if p_data:
             st.markdown(f"**🎤 Animador(a):** {p_data.get('animador', 'Ninguno(a)')}")
             st.markdown(f"**💃 Dalinas ({p_data.get('num_dalinas', 0)}):** {p_data.get('dalinas', 'Ninguna')}")
