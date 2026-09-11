@@ -11,7 +11,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Estilos CSS Unificados (Tarjetas y Ficha con el mismo diseño)
+# Estilos CSS Unificados (Tarjetas y Ficha con el mismo diseño exacto)
 st.markdown("""
     <style>
     /* Estilo base de tarjeta */
@@ -45,34 +45,27 @@ st.markdown("""
         line-height: 1.3;
     }
     
-    /* Ficha del Evento (Mismo diseño que tarjeta de evento) */
-    .ficha-card {
-        background-color: #EBD9F3;
-        border-radius: 10px;
-        padding: 14px;
-        color: #111111;
-        box-shadow: 0px 2px 6px rgba(0,0,0,0.08);
-    }
+    /* Encabezado y Secciones Moradas para Ficha y Modales */
     .ficha-header-bg {
         background-color: #7B2CBF;
         color: white;
-        padding: 8px 10px;
+        padding: 6px 10px;
         border-radius: 6px;
         text-align: center;
-        font-size: 14px;
+        font-size: 13px;
         font-weight: bold;
-        margin-bottom: 10px;
+        margin-bottom: 8px;
         text-transform: capitalize;
     }
     .ficha-section-bg {
         background-color: #7B2CBF;
         color: white;
-        padding: 4px 8px;
+        padding: 3px 6px;
         border-radius: 4px;
-        font-size: 12px;
+        font-size: 11px;
         font-weight: bold;
-        margin-top: 10px;
-        margin-bottom: 8px;
+        margin-top: 8px;
+        margin-bottom: 6px;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -108,10 +101,10 @@ def calcular_hora_fin(hora_inicio_str, duracion_str):
     try:
         match = re.search(r"(\d+(\.\d+)?)", str(duracion_str))
         if not match:
-            return f"{hora_inicio_str} (Duración: {duracion_str})"
+            return f"{hora_inicio_str} ({duracion_str})"
         
         horas_sumar = float(match.group(1))
-        hora_clean = hora_inicio_str.strip().upper()
+        hora_clean = str(hora_inicio_str).strip().upper()
         dt_inicio = None
         
         for fmt in ["%I:%M %p", "%I:%M%p", "%H:%M"]:
@@ -122,13 +115,13 @@ def calcular_hora_fin(hora_inicio_str, duracion_str):
                 pass
                 
         if not dt_inicio:
-            return f"{hora_inicio_str} (+ {duracion_str})"
+            return f"{hora_inicio_str} ({duracion_str})"
             
         dt_fin = dt_inicio + timedelta(hours=horas_sumar)
         hora_fin_formatted = dt_fin.strftime("%I:%M %p").lstrip("0")
         return f"{hora_inicio_str} a {hora_fin_formatted}"
     except Exception:
-        return f"{hora_inicio_str} (+ {duracion_str})"
+        return f"{hora_inicio_str} ({duracion_str})"
 
 # 4. Funciones de Base de Datos
 def obtener_eventos():
@@ -160,7 +153,7 @@ def agregar_dalina_callback(state_key):
     if len(st.session_state[state_key]) < 7:
         st.session_state[state_key].append("")
 
-# 5. Modal para Asignar Personal (Con Selector de Duración)
+# 5. Modal para Asignar Personal
 @st.dialog("👤 Asignar Personal al Evento")
 def modal_asignar_personal(evento):
     e_id = int(evento["id"])
@@ -221,9 +214,8 @@ def modal_asignar_personal(evento):
     dj = st.text_input("🎧 DJ:", value=p_data.get("dj", ""), placeholder="Nombre DJ", key=f"in_dj_{evento['id']}")
     staff = st.text_input("🛠️ Staff:", value=p_data.get("staff", ""), placeholder="Nombre Staff", key=f"in_staff_{evento['id']}")
     
-    # Opciones de Duración
     opciones_duracion = ["1.5 horas", "2 horas", "2.5 horas", "3 horas"]
-    duracion_previa = p_data.get("duracion", "2 horas").lower()
+    duracion_previa = str(p_data.get("duracion", "2 horas")).lower()
     idx_duracion = opciones_duracion.index(duracion_previa) if duracion_previa in opciones_duracion else 1
     
     duracion = st.selectbox("⏳ Duración del Show:", opciones_duracion, index=idx_duracion, key=f"sel_dur_{evento['id']}")
@@ -251,8 +243,7 @@ def modal_asignar_personal(evento):
         else:
             st.error(f"❌ Error al guardar en Supabase: {msg}")
 
-# 6. Modal Ficha Detallada (Con estilo idéntico a la Tarjeta de Evento)
-# 6. Modal Ficha Detallada (Diseño idéntico a tarjeta, corregido sin fugas de texto HTML)
+# 6. Modal Ficha Detallada (Tarjeta resumida e idéntica a la lista de eventos)
 @st.dialog("📋 Ficha del Evento")
 def modal_ver_ficha(evento_id):
     e_id = int(evento_id)
@@ -262,65 +253,57 @@ def modal_ver_ficha(evento_id):
         st.error("No se encontró el evento.")
         return
 
-    evento = res_evento.data[0]
+    ev = res_evento.data[0]
     res_personal = supabase.table("personal").select("*").eq("evento_id", e_id).execute()
     p_data = res_personal.data[0] if res_personal.data else {}
 
-    # CÁLCULOS
-    fecha_formateada = formatear_fecha_larga(evento.get("fecha", ""))
+    # Variables
+    fecha_fmt = formatear_fecha_larga(ev.get("fecha", ""))
     duracion_str = p_data.get("duracion", "2 horas")
-    hora_inicio = evento.get("hora_contrato", "04:30 PM")
+    hora_inicio = ev.get("hora_contrato", "04:30 PM")
     rango_horas = calcular_hora_fin(hora_inicio, duracion_str)
 
-    costo = float(evento.get('costo_total', 0) or 0)
-    adelanto = float(evento.get('monto_adelanto', 0) or 0)
+    costo = float(ev.get('costo_total', 0) or 0)
+    adelanto = float(ev.get('monto_adelanto', 0) or 0)
     pendiente = costo - adelanto
+    tipo_str = f"({ev.get('tipo', 'Show')})" if ev.get('tipo') else ""
 
-    # CONTENEDOR TIPO TARJETA
-    st.markdown(f'<div class="ficha-header-bg">📅 {fecha_formateada}</div>', unsafe_allow_html=True)
-
-    with st.container(border=True):
-        st.markdown(f"🎭 **Tipo de Show:** {evento.get('tipo', 'Show')} ({evento.get('evento', 'Sin Nombre')})")
-        st.markdown(f"⏰ **Horario del Show:** {rango_horas}")
-        st.markdown(f"📍 **Lugar:** {evento.get('direccion', 'N/A')}")
-        st.markdown(f"💵 **Adelanto:** S/ {adelanto:.2f}")
-        st.markdown(f"💰 **Pendiente:** :red[**S/ {pendiente:.2f}**]")
+    # Sección de Personal
+    if p_data:
+        animador = p_data.get('animador', 'Ninguno(a)')
+        dalinas = p_data.get('dalinas', 'Ninguna')
+        cant_dalinas = p_data.get('num_dalinas', 0)
+        dj = p_data.get('dj', 'N/A')
+        staff = p_data.get('staff', 'N/A')
+        detalles_txt = p_data.get('detalles', '')
         
-        st.markdown('<div class="ficha-section-bg">👥 Personal Asignado</div>', unsafe_allow_html=True)
-        
-        if p_data:
-            st.markdown(f"🎤 **Animador(a):** {p_data.get('animador', 'Ninguno(a)')}")
-            st.markdown(f"💃 **Dalinas ({p_data.get('num_dalinas', 0)}):** {p_data.get('dalinas', 'Ninguna')}")
-            st.markdown(f"🎧 **DJ:** {p_data.get('dj', 'N/A')}")
-            st.markdown(f"🛠️ **Staff:** {p_data.get('staff', 'N/A')}")
-            
-            if p_data.get('detalles'):
-                st.info(f"📝 **Notas:** {p_data.get('detalles')}")
-        else:
-            st.warning("⚠️ Aún no se ha asignado personal a este evento.")
-
-    # RENDERIZADO TIPO TARJETA
-    st.markdown(f"""
-        <div class="ficha-card">
-            <div class="ficha-header-bg">
-                📅 {fecha_formateada}
-            </div>
-            
-            <div class="data-line">🎭 <b>Tipo de Show:</b> {evento.get('tipo', 'Show Infantil')} ({evento.get('evento', 'Sin Nombre')})</div>
-            <div class="data-line">⏰ <b>Horario del Show:</b> {rango_horas}</div>
-            <div class="data-line">📍 <b>Lugar:</b> {evento.get('direccion', 'N/A')}</div>
-            <div class="data-line">💵 <b>Adelanto:</b> S/ {adelanto:.2f}</div>
-            <div class="data-line">💰 <b style="color: #D90429;">Pendiente: S/ {pendiente:.2f}</b></div>
-            
+        html_personal = f"""
             <div class="ficha-section-bg">👥 Personal Asignado</div>
-            
-            {"".join([
-                f'<div class="data-line">🎤 <b>Animador(a):</b> {p_data.get("animador", "Ninguno(a)")}</div>',
-                f'<div class="data-line">💃 <b>Dalinas ({p_data.get("num_dalinas", 0)}):</b> {p_data.get("dalinas", "Ninguna")}</div>',
-                f'<div class="data-line">🎧 <b>DJ:</b> {p_data.get("dj", "N/A")}</div>',
-                f'<div class="data-line">🛠️ <b>Staff:</b> {p_data.get("staff", "N/A")}</div>',
-                f'<div class="data-line" style="margin-top: 6px; font-style: italic;">📝 <b>Notas:</b> {p_data.get("detalles")}</div>' if p_data.get('detalles') else ''
-            ]) if p_data else '<div class="data-line" style="color: #D90429;">⚠️ Aún no se ha asignado personal.</div>'}
+            <div class="data-line">🎤 <b>Animador(a):</b> {animador}</div>
+            <div class="data-line">💃 <b>Dalinas ({cant_dalinas}):</b> {dalinas}</div>
+            <div class="data-line">🎧 <b>DJ:</b> {dj} | 🛠️ <b>Staff:</b> {staff}</div>
+        """
+        if detalles_txt:
+            html_personal += f'<div class="data-line" style="margin-top:4px; font-style:italic;">📝 <b>Notas:</b> {detalles_txt}</div>'
+    else:
+        html_personal = """
+            <div class="ficha-section-bg">👥 Personal Asignado</div>
+            <div class="data-line" style="color: #D90429;">⚠️ Aún no se ha asignado personal a este evento.</div>
+        """
+
+    # HTML de la Tarjeta Resumida Unificada
+    st.markdown(f"""
+        <div class="card-box">
+            <div class="ficha-header-bg">📅 {fecha_fmt}</div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                <div class="event-title">🎉 {ev.get('evento', 'Sin Nombre')} {tipo_str}</div>
+                <span class="badge-marca">{ev.get('marca', 'MADAI')}</span>
+            </div>
+            <div class="data-line">⏰ <b>Horario del Show:</b> {rango_horas} (Citación: {ev.get('hora_citacion', '04:00 PM')})</div>
+            <div class="data-line">👤 <b>Cliente:</b> {ev.get('cliente', 'N/A')} | 📱 <b>Tel:</b> {ev.get('telefono', 'N/A')}</div>
+            <div class="data-line">📍 <b>Lugar:</b> {ev.get('direccion', 'N/A')}</div>
+            <div class="data-line">💵 <b>Adelanto:</b> S/ {adelanto:.2f} | 💰 <b style="color: #D90429;">Pendiente: S/ {pendiente:.2f}</b></div>
+            {html_personal}
         </div>
     """, unsafe_allow_html=True)
 
@@ -344,7 +327,7 @@ with tab1:
                 pendiente = costo - adelanto
                 tipo_str = f"({ev.get('tipo', 'Show')})" if ev.get('tipo') else ""
                 
-                # Tarjeta de evento compacta
+                # Tarjeta de evento compacta en lista principal
                 st.markdown(f"""
                     <div class="card-box">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
