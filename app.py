@@ -11,14 +11,14 @@ st.set_page_config(
     layout="wide"
 )
 
-# Estilos CSS Ultra-Compactos
+# Estilos CSS Unificados (Tarjetas y Ficha con el mismo diseño)
 st.markdown("""
     <style>
-    /* Tarjetas de eventos compactas */
+    /* Estilo base de tarjeta */
     .card-box {
         background-color: #EBD9F3;
         border-radius: 8px;
-        padding: 8px 12px;
+        padding: 10px 12px;
         margin-bottom: 6px;
         color: #111111;
         box-shadow: 0px 2px 4px rgba(0,0,0,0.05);
@@ -41,37 +41,38 @@ st.markdown("""
     .data-line {
         font-size: 12px;
         color: #111111;
-        margin-bottom: 2px;
-        line-height: 1.2;
+        margin-bottom: 3px;
+        line-height: 1.3;
     }
     
-    /* Cuadro de la Ficha Detallada */
-    .ficha-header {
+    /* Ficha del Evento (Mismo diseño que tarjeta de evento) */
+    .ficha-card {
+        background-color: #EBD9F3;
+        border-radius: 10px;
+        padding: 14px;
+        color: #111111;
+        box-shadow: 0px 2px 6px rgba(0,0,0,0.08);
+    }
+    .ficha-header-bg {
         background-color: #7B2CBF;
         color: white;
-        padding: 10px;
-        border-radius: 8px;
+        padding: 8px 10px;
+        border-radius: 6px;
         text-align: center;
-        font-size: 18px;
+        font-size: 14px;
         font-weight: bold;
-        margin-bottom: 12px;
+        margin-bottom: 10px;
         text-transform: capitalize;
     }
-    .ficha-compact-text {
-        margin-bottom: 2px !important;
-        line-height: 1.35;
-    }
-    .titulo-personal-resaltado {
+    .ficha-section-bg {
         background-color: #7B2CBF;
         color: white;
-        padding: 6px 12px;
-        border-radius: 6px;
-        font-size: 15px;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
         font-weight: bold;
         margin-top: 10px;
         margin-bottom: 8px;
-        display: inline-block;
-        width: 100%;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -220,7 +221,7 @@ def modal_asignar_personal(evento):
     dj = st.text_input("🎧 DJ:", value=p_data.get("dj", ""), placeholder="Nombre DJ", key=f"in_dj_{evento['id']}")
     staff = st.text_input("🛠️ Staff:", value=p_data.get("staff", ""), placeholder="Nombre Staff", key=f"in_staff_{evento['id']}")
     
-    # Opciones de Duración con Selector
+    # Opciones de Duración
     opciones_duracion = ["1.5 horas", "2 horas", "2.5 horas", "3 horas"]
     duracion_previa = p_data.get("duracion", "2 horas").lower()
     idx_duracion = opciones_duracion.index(duracion_previa) if duracion_previa in opciones_duracion else 1
@@ -250,7 +251,7 @@ def modal_asignar_personal(evento):
         else:
             st.error(f"❌ Error al guardar en Supabase: {msg}")
 
-# 6. Modal Ficha Detallada (Sin espacios sobrantes, sin título financiero y con Personal Resaltado)
+# 6. Modal Ficha Detallada (Con estilo idéntico a la Tarjeta de Evento)
 @st.dialog("📋 Ficha del Evento")
 def modal_ver_ficha(evento_id):
     e_id = int(evento_id)
@@ -274,34 +275,30 @@ def modal_ver_ficha(evento_id):
     adelanto = float(evento.get('monto_adelanto', 0) or 0)
     pendiente = costo - adelanto
 
-    # ENCABEZADO GRANDE
+    # RENDERIZADO TIPO TARJETA
     st.markdown(f"""
-        <div class="ficha-header">
-            📅 {fecha_formateada.title()}
+        <div class="ficha-card">
+            <div class="ficha-header-bg">
+                📅 {fecha_formateada}
+            </div>
+            
+            <div class="data-line">🎭 <b>Tipo de Show:</b> {evento.get('tipo', 'Show Infantil')} ({evento.get('evento', 'Sin Nombre')})</div>
+            <div class="data-line">⏰ <b>Horario del Show:</b> {rango_horas}</div>
+            <div class="data-line">📍 <b>Lugar:</b> {evento.get('direccion', 'N/A')}</div>
+            <div class="data-line">💵 <b>Adelanto:</b> S/ {adelanto:.2f}</div>
+            <div class="data-line">💰 <b style="color: #D90429;">Pendiente: S/ {pendiente:.2f}</b></div>
+            
+            <div class="ficha-section-bg">👥 Personal Asignado</div>
+            
+            {"".join([
+                f'<div class="data-line">🎤 <b>Animador(a):</b> {p_data.get("animador", "Ninguno(a)")}</div>',
+                f'<div class="data-line">💃 <b>Dalinas ({p_data.get("num_dalinas", 0)}):</b> {p_data.get("dalinas", "Ninguna")}</div>',
+                f'<div class="data-line">🎧 <b>DJ:</b> {p_data.get("dj", "N/A")}</div>',
+                f'<div class="data-line">🛠️ <b>Staff:</b> {p_data.get("staff", "N/A")}</div>',
+                f'<div class="data-line" style="margin-top: 6px; font-style: italic;">📝 <b>Notas:</b> {p_data.get("detalles")}</div>' if p_data.get('detalles') else ''
+            ]) if p_data else '<div class="data-line" style="color: #D90429;">⚠️ Aún no se ha asignado personal.</div>'}
         </div>
     """, unsafe_allow_html=True)
-
-    # CUADRO DE CONTENIDO SIN ESPACIOS INNECESARIOS
-    with st.container(border=True):
-        st.markdown(f"**🎭 Tipo de Show:** {evento.get('tipo', 'Show Infantil')} ({evento.get('evento', 'Sin Nombre')})", help=None)
-        st.markdown(f"**⏰ Horario del Show:** {rango_horas}")
-        st.markdown(f"**📍 Dirección:** {evento.get('direccion', 'N/A')}")
-        st.markdown(f"**💵 Monto Adelanto:** S/ {adelanto:.2f}")
-        st.markdown(f"**🔴 Saldo Pendiente:** :red[**S/ {pendiente:.2f}**]")
-        
-        # TÍTULO PERSONAL RESALTADO
-        st.markdown('<div class="titulo-personal-resaltado">👥 Personal Asignado</div>', unsafe_allow_html=True)
-        
-        if p_data:
-            st.markdown(f"**🎤 Animador(a):** {p_data.get('animador', 'Ninguno(a)')}")
-            st.markdown(f"**💃 Dalinas ({p_data.get('num_dalinas', 0)}):** {p_data.get('dalinas', 'Ninguna')}")
-            st.markdown(f"**🎧 DJ:** {p_data.get('dj', 'N/A')}")
-            st.markdown(f"**🛠️ Staff:** {p_data.get('staff', 'N/A')}")
-            
-            if p_data.get('detalles'):
-                st.info(f"**📝 Notas:** {p_data.get('detalles')}")
-        else:
-            st.warning("⚠️ Aún no se ha asignado personal a este evento.")
 
 
 # 7. Vista Principal
