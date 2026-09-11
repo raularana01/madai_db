@@ -247,6 +247,7 @@ def modal_asignar_personal(evento):
             st.error(f"❌ Error al guardar en Supabase: {msg}")
 
 # 6. Modal Ficha Detallada (Tarjeta unificada en HTML limpio)
+# 6. Modal Ficha Detallada (Solución definitiva a código HTML expuesto)
 @st.dialog("📋 Ficha del Evento")
 def modal_ver_ficha(evento_id):
     e_id = int(evento_id)
@@ -260,7 +261,7 @@ def modal_ver_ficha(evento_id):
     res_personal = supabase.table("personal").select("*").eq("evento_id", e_id).execute()
     p_data = res_personal.data[0] if res_personal.data else {}
 
-    # Datos básicos
+    # Variables
     fecha_fmt = formatear_fecha_larga(ev.get("fecha", ""))
     duracion_str = p_data.get("duracion", "2 horas") if p_data.get("duracion") else "2 horas"
     hora_inicio = ev.get("hora_contrato", "04:30 PM")
@@ -271,46 +272,32 @@ def modal_ver_ficha(evento_id):
     pendiente = costo - adelanto
     tipo_str = f"({ev.get('tipo', 'Show')})" if ev.get('tipo') else ""
 
-    # Bloque HTML unificado en una sola cadena para evitar errores de renderizado
-    html_card = f"""
-    <div class="card-box">
-        <div class="ficha-header-bg">📅 {fecha_fmt}</div>
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-            <div class="event-title">🎉 {ev.get('evento', 'Sin Nombre')} {tipo_str}</div>
-            <span class="badge-marca">{ev.get('marca', 'MADAI')}</span>
-        </div>
-        <div class="data-line">⏰ <b>Horario del Show:</b> {rango_horas} (Citación: {ev.get('hora_citacion', '04:00 PM')})</div>
-        <div class="data-line">👤 <b>Cliente:</b> {ev.get('cliente', 'N/A')} | 📱 <b>Tel:</b> {ev.get('telefono', 'N/A')}</div>
-        <div class="data-line">📍 <b>Lugar:</b> {ev.get('direccion', 'N/A')}</div>
-        <div class="data-line">💵 <b>Adelanto:</b> S/ {adelanto:.2f} | 💰 <b style="color: #D90429;">Pendiente: S/ {pendiente:.2f}</b></div>
-    """
+    # Tarjeta Principal (Diseño exacto en Streamlit)
+    with st.container(border=True):
+        st.markdown(f'<div class="ficha-header-bg">📅 {fecha_fmt}</div>', unsafe_allow_html=True)
+        
+        col_t1, col_t2 = st.columns([4, 1])
+        with col_t1:
+            st.markdown(f'<div class="event-title">🎉 {ev.get("evento", "Sin Nombre")} {tipo_str}</div>', unsafe_allow_html=True)
+        with col_t2:
+            st.markdown(f'<span class="badge-marca">{ev.get("marca", "MADAI")}</span>', unsafe_allow_html=True)
 
-    if p_data:
-        animador = p_data.get('animador', 'Ninguno(a)')
-        dalinas = p_data.get('dalinas', 'Ninguna')
-        cant_dalinas = p_data.get('num_dalinas', 0)
-        dj = p_data.get('dj', 'N/A')
-        staff = p_data.get('staff', 'N/A')
-        detalles_txt = p_data.get('detalles', '')
+        st.markdown(f'<div class="data-line">⏰ <b>Horario del Show:</b> {rango_horas} (Citación: {ev.get("hora_citacion", "04:00 PM")})</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="data-line">👤 <b>Cliente:</b> {ev.get("cliente", "N/A")} | 📱 <b>Tel:</b> {ev.get("telefono", "N/A")}</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="data-line">📍 <b>Lugar:</b> {ev.get("direccion", "N/A")}</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="data-line">💵 <b>Adelanto:</b> S/ {adelanto:.2f} | 💰 <b style="color: #D90429;">Pendiente: S/ {pendiente:.2f}</b></div>', unsafe_allow_html=True)
 
-        html_card += f"""
-        <div class="ficha-section-bg">👥 Personal Asignado</div>
-        <div class="data-line">🎤 <b>Animador(a):</b> {animador}</div>
-        <div class="data-line">💃 <b>Dalinas ({cant_dalinas}):</b> {dalinas}</div>
-        <div class="data-line">🎧 <b>DJ:</b> {dj} | 🛠️ <b>Staff:</b> {staff}</div>
-        """
+        # Sección Personal
+        st.markdown('<div class="ficha-section-bg">👥 Personal Asignado</div>', unsafe_allow_html=True)
 
-        if detalles_txt:
-            html_card += f'<div class="data-line" style="margin-top:4px; font-style:italic;">📝 <b>Notas:</b> {detalles_txt}</div>'
-    else:
-        html_card += """
-        <div class="ficha-section-bg">👥 Personal Asignado</div>
-        <div class="data-line" style="color: #D90429;">⚠️ Aún no se ha asignado personal a este evento.</div>
-        """
-
-    html_card += "</div>"
-
-    st.markdown(html_card, unsafe_allow_html=True)
+        if p_data:
+            st.markdown(f'<div class="data-line">🎤 <b>Animador(a):</b> {p_data.get("animador", "Ninguno(a)")}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="data-line">💃 <b>Dalinas ({p_data.get("num_dalinas", 0)}):</b> {p_data.get("dalinas", "Ninguna")}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="data-line">🎧 <b>DJ:</b> {p_data.get("dj", "N/A")} | 🛠️ <b>Staff:</b> {p_data.get("staff", "N/A")}</div>', unsafe_allow_html=True)
+            if p_data.get('detalles'):
+                st.markdown(f'<div class="data-line" style="margin-top:4px; font-style:italic;">📝 <b>Notas:</b> {p_data.get("detalles")}</div>', unsafe_allow_html=True)
+        else:
+            st.markdown('<div class="data-line" style="color: #D90429;">⚠️ Aún no se ha asignado personal a este evento.</div>', unsafe_allow_html=True)
 
 
 # 7. Vista Principal
