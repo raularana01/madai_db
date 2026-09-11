@@ -252,6 +252,7 @@ def modal_asignar_personal(evento):
             st.error(f"❌ Error al guardar en Supabase: {msg}")
 
 # 6. Modal Ficha Detallada (Con estilo idéntico a la Tarjeta de Evento)
+# 6. Modal Ficha Detallada (Diseño idéntico a tarjeta, corregido sin fugas de texto HTML)
 @st.dialog("📋 Ficha del Evento")
 def modal_ver_ficha(evento_id):
     e_id = int(evento_id)
@@ -265,7 +266,7 @@ def modal_ver_ficha(evento_id):
     res_personal = supabase.table("personal").select("*").eq("evento_id", e_id).execute()
     p_data = res_personal.data[0] if res_personal.data else {}
 
-    # Cálculos
+    # CÁLCULOS
     fecha_formateada = formatear_fecha_larga(evento.get("fecha", ""))
     duracion_str = p_data.get("duracion", "2 horas")
     hora_inicio = evento.get("hora_contrato", "04:30 PM")
@@ -274,6 +275,29 @@ def modal_ver_ficha(evento_id):
     costo = float(evento.get('costo_total', 0) or 0)
     adelanto = float(evento.get('monto_adelanto', 0) or 0)
     pendiente = costo - adelanto
+
+    # CONTENEDOR TIPO TARJETA
+    st.markdown(f'<div class="ficha-header-bg">📅 {fecha_formateada}</div>', unsafe_allow_html=True)
+
+    with st.container(border=True):
+        st.markdown(f"🎭 **Tipo de Show:** {evento.get('tipo', 'Show')} ({evento.get('evento', 'Sin Nombre')})")
+        st.markdown(f"⏰ **Horario del Show:** {rango_horas}")
+        st.markdown(f"📍 **Lugar:** {evento.get('direccion', 'N/A')}")
+        st.markdown(f"💵 **Adelanto:** S/ {adelanto:.2f}")
+        st.markdown(f"💰 **Pendiente:** :red[**S/ {pendiente:.2f}**]")
+        
+        st.markdown('<div class="ficha-section-bg">👥 Personal Asignado</div>', unsafe_allow_html=True)
+        
+        if p_data:
+            st.markdown(f"🎤 **Animador(a):** {p_data.get('animador', 'Ninguno(a)')}")
+            st.markdown(f"💃 **Dalinas ({p_data.get('num_dalinas', 0)}):** {p_data.get('dalinas', 'Ninguna')}")
+            st.markdown(f"🎧 **DJ:** {p_data.get('dj', 'N/A')}")
+            st.markdown(f"🛠️ **Staff:** {p_data.get('staff', 'N/A')}")
+            
+            if p_data.get('detalles'):
+                st.info(f"📝 **Notas:** {p_data.get('detalles')}")
+        else:
+            st.warning("⚠️ Aún no se ha asignado personal a este evento.")
 
     # RENDERIZADO TIPO TARJETA
     st.markdown(f"""
