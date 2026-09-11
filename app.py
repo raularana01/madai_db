@@ -250,6 +250,7 @@ def modal_asignar_personal(evento):
             st.error(f"❌ Error al guardar en Supabase: {msg}")
 
 # 6. Modal Ficha Detallada (Diseño de Cuadro con Campos Solicitados Únicamente)
+# 6. Modal Ficha Detallada (Diseño en Cuadro Nativo sin errores de HTML)
 @st.dialog("📋 Ficha del Evento")
 def modal_ver_ficha(evento_id):
     e_id = int(evento_id)
@@ -273,29 +274,38 @@ def modal_ver_ficha(evento_id):
     adelanto = float(evento.get('monto_adelanto', 0) or 0)
     pendiente = costo - adelanto
 
-    # RENDERIZADO DEL CUADRO
+    # ENCABEZADO GRANDE
     st.markdown(f"""
-        <div class="ficha-container">
-            <div class="ficha-header">
-                📅 {fecha_formateada}
-            </div>
-            
-            <div class="ficha-item"><b>🎭 Tipo de Show:</b> {evento.get('tipo', 'Show Infantil')} ({evento.get('evento', 'Sin Nombre')})</div>
-            <div class="ficha-item"><b>⏰ Horario del Show:</b> {rango_horas}</div>
-            <div class="ficha-item"><b>📍 Dirección:</b> {evento.get('direccion', 'N/A')}</div>
-            
-            <div class="ficha-section-title">💰 Información Financiera</div>
-            <div class="ficha-item"><b>💵 Monto Adelanto:</b> S/ {adelanto:.2f}</div>
-            <div class="ficha-item"><b>🔴 Saldo Pendiente:</b> <span style="color: #D90429; font-weight: bold;">S/ {pendiente:.2f}</span></div>
-            
-            <div class="ficha-section-title">👥 Personal Asignado</div>
-            <div class="ficha-item"><b>🎤 Animador(a):</b> {p_data.get('animador', 'Ninguno(a)')}</div>
-            <div class="ficha-item"><b>💃 Dalinas ({p_data.get('num_dalinas', 0)}):</b> {p_data.get('dalinas', 'Ninguna')}</div>
-            <div class="ficha-item"><b>🎧 DJ:</b> {p_data.get('dj', 'N/A')}</div>
-            <div class="ficha-item"><b>🛠️ Staff:</b> {p_data.get('staff', 'N/A')}</div>
-            {f'<div class="ficha-item" style="margin-top: 8px; font-style: italic;"><b>📝 Notas:</b> {p_data.get("detalles")}</div>' if p_data.get('detalles') else ''}
+        <div class="ficha-header">
+            📅 {fecha_formateada.title()}
         </div>
     """, unsafe_allow_html=True)
+
+    # CUADRO DE CONTENIDO
+    with st.container(border=True):
+        st.markdown(f"**🎭 Tipo de Show:** {evento.get('tipo', 'Show Infantil')} ({evento.get('evento', 'Sin Nombre')})")
+        st.markdown(f"**⏰ Horario del Show:** {rango_horas}")
+        st.markdown(f"**📍 Dirección:** {evento.get('direccion', 'N/A')}")
+        
+        st.divider()
+        
+        st.markdown("##### 💰 Información Financiera")
+        st.markdown(f"**💵 Monto Adelanto:** S/ {adelanto:.2f}")
+        st.markdown(f"**🔴 Saldo Pendiente:** :red[**S/ {pendiente:.2f}**]")
+        
+        st.divider()
+        
+        st.markdown("##### 👥 Personal Asignado")
+        if p_data:
+            st.markdown(f"**🎤 Animador(a):** {p_data.get('animador', 'Ninguno(a)')}")
+            st.markdown(f"**💃 Dalinas ({p_data.get('num_dalinas', 0)}):** {p_data.get('dalinas', 'Ninguna')}")
+            st.markdown(f"**🎧 DJ:** {p_data.get('dj', 'N/A')}")
+            st.markdown(f"**🛠️ Staff:** {p_data.get('staff', 'N/A')}")
+            
+            if p_data.get('detalles'):
+                st.info(f"**📝 Notas:** {p_data.get('detalles')}")
+        else:
+            st.warning("⚠️ Aún no se ha asignado personal a este evento.")
 
 
 # 7. Vista Principal
