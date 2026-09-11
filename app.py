@@ -11,53 +11,72 @@ st.set_page_config(
     layout="wide"
 )
 
-# Estilos CSS más compactos
+# Estilos CSS Ultra-Compactos y Ficha en Cuadro
 st.markdown("""
     <style>
+    /* Tarjetas de eventos compactas */
     .card-box {
         background-color: #EBD9F3;
-        border-radius: 10px;
-        padding: 10px 14px;
-        margin-bottom: 8px;
+        border-radius: 8px;
+        padding: 8px 12px;
+        margin-bottom: 6px;
         color: #111111;
         box-shadow: 0px 2px 4px rgba(0,0,0,0.05);
     }
     .badge-marca {
         background-color: #7B2CBF;
         color: white;
-        padding: 2px 8px;
+        padding: 2px 6px;
         border-radius: 4px;
         font-weight: bold;
-        font-size: 11px;
+        font-size: 10px;
         text-transform: uppercase;
     }
     .event-title {
-        font-size: 15px;
+        font-size: 14px;
         font-weight: bold;
         color: #000000;
         margin-bottom: 2px;
     }
     .data-line {
-        font-size: 12.5px;
+        font-size: 12px;
         color: #111111;
         margin-bottom: 2px;
-        line-height: 1.3;
+        line-height: 1.2;
     }
-    .ficha-box {
+    
+    /* Cuadro de la Ficha Detallada */
+    .ficha-container {
         border: 2px solid #7B2CBF;
-        border-radius: 10px;
-        padding: 15px;
-        background-color: #FAFAFA;
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        padding: 16px;
+        box-shadow: 0px 4px 10px rgba(0,0,0,0.08);
     }
     .ficha-header {
         background-color: #7B2CBF;
         color: white;
-        padding: 8px 12px;
-        border-radius: 6px;
+        padding: 10px;
+        border-radius: 8px;
         text-align: center;
         font-size: 18px;
         font-weight: bold;
-        margin-bottom: 12px;
+        margin-bottom: 14px;
+        text-transform: capitalize;
+    }
+    .ficha-item {
+        font-size: 14px;
+        color: #222222;
+        margin-bottom: 6px;
+    }
+    .ficha-section-title {
+        font-size: 15px;
+        font-weight: bold;
+        color: #7B2CBF;
+        border-bottom: 1px solid #EBD9F3;
+        padding-bottom: 4px;
+        margin-top: 10px;
+        margin-bottom: 8px;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -91,14 +110,11 @@ def formatear_fecha_larga(fecha_str):
 def calcular_hora_fin(hora_inicio_str, duracion_str):
     """Suma la duración a la hora de contrato"""
     try:
-        # Extraer horas de la duración (ej: "2 Horas", "2.5 horas", "2")
         match = re.search(r"(\d+(\.\d+)?)", str(duracion_str))
         if not match:
             return f"{hora_inicio_str} (Duración: {duracion_str})"
         
         horas_sumar = float(match.group(1))
-        
-        # Parsear hora de inicio (ej: "04:30 PM", "4:30 PM", "16:30")
         hora_clean = hora_inicio_str.strip().upper()
         dt_inicio = None
         
@@ -148,17 +164,15 @@ def agregar_dalina_callback(state_key):
     if len(st.session_state[state_key]) < 7:
         st.session_state[state_key].append("")
 
-# 5. Modal para Asignar Personal (Mantiene los datos cargados)
+# 5. Modal para Asignar Personal (Carga y Mantiene Datos Persistentes)
 @st.dialog("👤 Asignar Personal al Evento")
 def modal_asignar_personal(evento):
-    # Traer el personal más reciente de Supabase para asegurar que persista
     e_id = int(evento["id"])
     res_p = supabase.table("personal").select("*").eq("evento_id", e_id).execute()
     p_data = res_p.data[0] if res_p.data else {}
 
     state_key = f"dalinas_lista_{evento['id']}"
 
-    # Cargar datos guardados previamente o inicializar
     if state_key not in st.session_state:
         dalinas_existentes = p_data.get("dalinas", "")
         if dalinas_existentes:
@@ -231,17 +245,15 @@ def modal_asignar_personal(evento):
         
         if exito:
             st.success("✅ ¡Personal guardado correctamente!")
-            # Mantenemos los datos en el estado para que sigan ahí al volver a abrir
             st.rerun()
         else:
             st.error(f"❌ Error al guardar en Supabase: {msg}")
 
-# 6. Modal Ficha Detallada (Vista en Cuadro con Encabezado Grande)
+# 6. Modal Ficha Detallada (Diseño de Cuadro con Campos Solicitados Únicamente)
 @st.dialog("📋 Ficha del Evento")
 def modal_ver_ficha(evento_id):
     e_id = int(evento_id)
     
-    # Consultar evento y personal
     res_evento = supabase.table("eventos").select("*").eq("id", e_id).execute()
     if not res_evento.data:
         st.error("No se encontró el evento.")
@@ -251,7 +263,7 @@ def modal_ver_ficha(evento_id):
     res_personal = supabase.table("personal").select("*").eq("evento_id", e_id).execute()
     p_data = res_personal.data[0] if res_personal.data else {}
 
-    # Cálculos de Hora y Fecha
+    # Cálculos
     fecha_formateada = formatear_fecha_larga(evento.get("fecha", ""))
     duracion_str = p_data.get("duracion", "2 Horas")
     hora_inicio = evento.get("hora_contrato", "04:30 PM")
@@ -261,49 +273,29 @@ def modal_ver_ficha(evento_id):
     adelanto = float(evento.get('monto_adelanto', 0) or 0)
     pendiente = costo - adelanto
 
-    # DISEÑO TIPO CUADRO / FICHA
+    # RENDERIZADO DEL CUADRO
     st.markdown(f"""
-        <div class="ficha-header">
-            📅 {fecha_formateada.upper()}
+        <div class="ficha-container">
+            <div class="ficha-header">
+                📅 {fecha_formateada}
+            </div>
+            
+            <div class="ficha-item"><b>🎭 Tipo de Show:</b> {evento.get('tipo', 'Show Infantil')} ({evento.get('evento', 'Sin Nombre')})</div>
+            <div class="ficha-item"><b>⏰ Horario del Show:</b> {rango_horas}</div>
+            <div class="ficha-item"><b>📍 Dirección:</b> {evento.get('direccion', 'N/A')}</div>
+            
+            <div class="ficha-section-title">💰 Información Financiera</div>
+            <div class="ficha-item"><b>💵 Monto Adelanto:</b> S/ {adelanto:.2f}</div>
+            <div class="ficha-item"><b>🔴 Saldo Pendiente:</b> <span style="color: #D90429; font-weight: bold;">S/ {pendiente:.2f}</span></div>
+            
+            <div class="ficha-section-title">👥 Personal Asignado</div>
+            <div class="ficha-item"><b>🎤 Animador(a):</b> {p_data.get('animador', 'Ninguno(a)')}</div>
+            <div class="ficha-item"><b>💃 Dalinas ({p_data.get('num_dalinas', 0)}):</b> {p_data.get('dalinas', 'Ninguna')}</div>
+            <div class="ficha-item"><b>🎧 DJ:</b> {p_data.get('dj', 'N/A')}</div>
+            <div class="ficha-item"><b>🛠️ Staff:</b> {p_data.get('staff', 'N/A')}</div>
+            {f'<div class="ficha-item" style="margin-top: 8px; font-style: italic;"><b>📝 Notas:</b> {p_data.get("detalles")}</div>' if p_data.get('detalles') else ''}
         </div>
     """, unsafe_allow_html=True)
-
-    with st.container():
-        col_a, col_b = st.columns(2)
-        
-        with col_a:
-            st.markdown("### 📌 Detalle del Evento")
-            st.write(f"**Evento / Cumple:** {evento.get('evento', 'N/A')}")
-            st.write(f"**Tipo de Show:** {evento.get('tipo', 'Show Infantil')}")
-            st.write(f"**Marca:** {evento.get('marca', 'Decoraciones MADAI')}")
-            st.write(f"**⏰ Horario del Show:** {rango_horas}")
-            st.write(f"**📍 Dirección:** {evento.get('direccion', 'N/A')}")
-
-        with col_b:
-            st.markdown("### 💰 Estado Financiero")
-            st.write(f"**Monto Adelanto:** S/ {adelanto:.2f}")
-            st.write(f"**Saldo Pendiente:** :red[**S/ {pendiente:.2f}**]")
-            st.write(f"**Costo Total:** S/ {costo:.2f}")
-            st.write(f"**Cliente:** {evento.get('cliente', 'N/A')}")
-            st.write(f"**Teléfono:** {evento.get('telefono', 'N/A')}")
-
-    st.divider()
-    st.markdown("### 👥 Personal Asignado")
-
-    if p_data:
-        c1, c2 = st.columns(2)
-        with c1:
-            st.write(f"🎤 **Animador(a):** {p_data.get('animador', 'Ninguno(a)')}")
-            st.write(f"💃 **Dalinas ({p_data.get('num_dalinas', 0)}):** {p_data.get('dalinas', 'Ninguna')}")
-            st.write(f"🎧 **DJ:** {p_data.get('dj', 'N/A')}")
-        with c2:
-            st.write(f"🛠️ **Staff:** {p_data.get('staff', 'N/A')}")
-            st.write(f"⏳ **Duración Contratada:** {duracion_str}")
-            
-        if p_data.get('detalles'):
-            st.info(f"📝 **Observaciones:** {p_data.get('detalles')}")
-    else:
-        st.warning("⚠️ Aún no se ha asignado personal a este evento.")
 
 
 # 7. Vista Principal
@@ -325,10 +317,10 @@ with tab1:
                 pendiente = costo - adelanto
                 tipo_str = f"({ev.get('tipo', 'Show')})" if ev.get('tipo') else ""
                 
-                # Tarjeta de evento compacta con márgenes reducidos
+                # Tarjeta de evento compacta
                 st.markdown(f"""
                     <div class="card-box">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
                             <div class="event-title">🎉 {ev['evento']} {tipo_str}</div>
                             <span class="badge-marca">{ev.get('marca', 'MADAI')}</span>
                         </div>
@@ -347,7 +339,7 @@ with tab1:
                     if st.button("📋 Ver Ficha", key=f"btn_ver_{ev['id']}", use_container_width=True):
                         modal_ver_ficha(ev['id'])
 
-                st.markdown("<div style='margin-bottom: 10px;'></div>", unsafe_allow_html=True)
+                st.markdown("<div style='margin-bottom: 6px;'></div>", unsafe_allow_html=True)
 
 with tab2:
     st.header("Registrar Nuevo Evento")
