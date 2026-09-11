@@ -11,7 +11,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Estilos CSS Unificados (Tarjetas y Ficha con el mismo diseño exacto)
+# Estilos CSS Unificados
 st.markdown("""
     <style>
     /* Estilo base de tarjeta */
@@ -45,7 +45,7 @@ st.markdown("""
         line-height: 1.3;
     }
     
-    /* Encabezado y Secciones Moradas para Ficha y Modales */
+    /* Encabezado y Secciones Moradas */
     .ficha-header-bg {
         background-color: #7B2CBF;
         color: white;
@@ -98,6 +98,9 @@ def formatear_fecha_larga(fecha_str):
 
 def calcular_hora_fin(hora_inicio_str, duracion_str):
     """Suma la duración a la hora de contrato"""
+    if not duracion_str or str(duracion_str).strip() == "":
+        duracion_str = "2 horas"
+        
     try:
         match = re.search(r"(\d+(\.\d+)?)", str(duracion_str))
         if not match:
@@ -243,7 +246,7 @@ def modal_asignar_personal(evento):
         else:
             st.error(f"❌ Error al guardar en Supabase: {msg}")
 
-# 6. Modal Ficha Detallada (Tarjeta resumida e idéntica a la lista de eventos)
+# 6. Modal Ficha Detallada (Tarjeta unificada en HTML limpio)
 @st.dialog("📋 Ficha del Evento")
 def modal_ver_ficha(evento_id):
     e_id = int(evento_id)
@@ -257,9 +260,9 @@ def modal_ver_ficha(evento_id):
     res_personal = supabase.table("personal").select("*").eq("evento_id", e_id).execute()
     p_data = res_personal.data[0] if res_personal.data else {}
 
-    # Variables
+    # Datos básicos
     fecha_fmt = formatear_fecha_larga(ev.get("fecha", ""))
-    duracion_str = p_data.get("duracion", "2 horas")
+    duracion_str = p_data.get("duracion", "2 horas") if p_data.get("duracion") else "2 horas"
     hora_inicio = ev.get("hora_contrato", "04:30 PM")
     rango_horas = calcular_hora_fin(hora_inicio, duracion_str)
 
@@ -268,7 +271,20 @@ def modal_ver_ficha(evento_id):
     pendiente = costo - adelanto
     tipo_str = f"({ev.get('tipo', 'Show')})" if ev.get('tipo') else ""
 
-    # Sección de Personal
+    # Bloque HTML unificado en una sola cadena para evitar errores de renderizado
+    html_card = f"""
+    <div class="card-box">
+        <div class="ficha-header-bg">📅 {fecha_fmt}</div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+            <div class="event-title">🎉 {ev.get('evento', 'Sin Nombre')} {tipo_str}</div>
+            <span class="badge-marca">{ev.get('marca', 'MADAI')}</span>
+        </div>
+        <div class="data-line">⏰ <b>Horario del Show:</b> {rango_horas} (Citación: {ev.get('hora_citacion', '04:00 PM')})</div>
+        <div class="data-line">👤 <b>Cliente:</b> {ev.get('cliente', 'N/A')} | 📱 <b>Tel:</b> {ev.get('telefono', 'N/A')}</div>
+        <div class="data-line">📍 <b>Lugar:</b> {ev.get('direccion', 'N/A')}</div>
+        <div class="data-line">💵 <b>Adelanto:</b> S/ {adelanto:.2f} | 💰 <b style="color: #D90429;">Pendiente: S/ {pendiente:.2f}</b></div>
+    """
+
     if p_data:
         animador = p_data.get('animador', 'Ninguno(a)')
         dalinas = p_data.get('dalinas', 'Ninguna')
@@ -276,36 +292,25 @@ def modal_ver_ficha(evento_id):
         dj = p_data.get('dj', 'N/A')
         staff = p_data.get('staff', 'N/A')
         detalles_txt = p_data.get('detalles', '')
-        
-        html_personal = f"""
-            <div class="ficha-section-bg">👥 Personal Asignado</div>
-            <div class="data-line">🎤 <b>Animador(a):</b> {animador}</div>
-            <div class="data-line">💃 <b>Dalinas ({cant_dalinas}):</b> {dalinas}</div>
-            <div class="data-line">🎧 <b>DJ:</b> {dj} | 🛠️ <b>Staff:</b> {staff}</div>
-        """
-        if detalles_txt:
-            html_personal += f'<div class="data-line" style="margin-top:4px; font-style:italic;">📝 <b>Notas:</b> {detalles_txt}</div>'
-    else:
-        html_personal = """
-            <div class="ficha-section-bg">👥 Personal Asignado</div>
-            <div class="data-line" style="color: #D90429;">⚠️ Aún no se ha asignado personal a este evento.</div>
+
+        html_card += f"""
+        <div class="ficha-section-bg">👥 Personal Asignado</div>
+        <div class="data-line">🎤 <b>Animador(a):</b> {animador}</div>
+        <div class="data-line">💃 <b>Dalinas ({cant_dalinas}):</b> {dalinas}</div>
+        <div class="data-line">🎧 <b>DJ:</b> {dj} | 🛠️ <b>Staff:</b> {staff}</div>
         """
 
-    # HTML de la Tarjeta Resumida Unificada
-    st.markdown(f"""
-        <div class="card-box">
-            <div class="ficha-header-bg">📅 {fecha_fmt}</div>
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                <div class="event-title">🎉 {ev.get('evento', 'Sin Nombre')} {tipo_str}</div>
-                <span class="badge-marca">{ev.get('marca', 'MADAI')}</span>
-            </div>
-            <div class="data-line">⏰ <b>Horario del Show:</b> {rango_horas} (Citación: {ev.get('hora_citacion', '04:00 PM')})</div>
-            <div class="data-line">👤 <b>Cliente:</b> {ev.get('cliente', 'N/A')} | 📱 <b>Tel:</b> {ev.get('telefono', 'N/A')}</div>
-            <div class="data-line">📍 <b>Lugar:</b> {ev.get('direccion', 'N/A')}</div>
-            <div class="data-line">💵 <b>Adelanto:</b> S/ {adelanto:.2f} | 💰 <b style="color: #D90429;">Pendiente: S/ {pendiente:.2f}</b></div>
-            {html_personal}
-        </div>
-    """, unsafe_allow_html=True)
+        if detalles_txt:
+            html_card += f'<div class="data-line" style="margin-top:4px; font-style:italic;">📝 <b>Notas:</b> {detalles_txt}</div>'
+    else:
+        html_card += """
+        <div class="ficha-section-bg">👥 Personal Asignado</div>
+        <div class="data-line" style="color: #D90429;">⚠️ Aún no se ha asignado personal a este evento.</div>
+        """
+
+    html_card += "</div>"
+
+    st.markdown(html_card, unsafe_allow_html=True)
 
 
 # 7. Vista Principal
@@ -327,7 +332,7 @@ with tab1:
                 pendiente = costo - adelanto
                 tipo_str = f"({ev.get('tipo', 'Show')})" if ev.get('tipo') else ""
                 
-                # Tarjeta de evento compacta en lista principal
+                # Tarjeta de evento compacta
                 st.markdown(f"""
                     <div class="card-box">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
