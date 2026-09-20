@@ -14,11 +14,10 @@ st.set_page_config(
 # Estilos CSS Unificados
 st.markdown("""
     <style>
-    /* Estilo del contenedor principal del modal para evitar superposición */
-    .card-modal-bg {
-        padding: 15px;
-        border-radius: 12px;
-        margin-top: -10px;
+    /* Reducir espacios predeterminados dentro de los modales */
+    div[data-testid="stDialog"] div[data-testid="stVerticalBlock"] {
+        gap: 0.4rem !important;
+        padding-top: 0px !important;
     }
 
     /* Encabezados Ficha */
@@ -30,9 +29,10 @@ st.markdown("""
         text-align: center;
         font-size: 14px;
         font-weight: bold;
-        margin-top: 5px !important;
-        margin-bottom: 10px !important;
+        margin-top: 0px !important;
+        margin-bottom: 4px !important;
         text-transform: capitalize;
+        width: 100%;
     }
 
     .header-risuena {
@@ -43,12 +43,13 @@ st.markdown("""
         text-align: center;
         font-size: 14px;
         font-weight: bold;
-        margin-top: 5px !important;
-        margin-bottom: 10px !important;
+        margin-top: 0px !important;
+        margin-bottom: 4px !important;
         text-transform: capitalize;
+        width: 100%;
     }
 
-    /* Tarjeta MADAI - Lila Claro */
+    /* Tarjetas principales de la lista */
     .card-madai {
         background-color: #EBD9F3 !important;
         border-radius: 8px;
@@ -59,7 +60,6 @@ st.markdown("""
         border-left: 5px solid #7B2CBF;
     }
 
-    /* Tarjeta RISUEÑA - Verde Claro */
     .card-risuena {
         background-color: #D8F3DC !important;
         border-radius: 8px;
@@ -74,14 +74,14 @@ st.markdown("""
         font-size: 15px;
         font-weight: bold;
         color: #111111 !important;
-        margin-bottom: 8px;
-        margin-top: 4px;
+        margin-bottom: 6px;
+        margin-top: 2px;
     }
 
     .data-line {
         font-size: 13px;
         color: #111111 !important;
-        margin-bottom: 6px;
+        margin-bottom: 4px;
         line-height: 1.4;
     }
 
@@ -271,7 +271,7 @@ def modal_asignar_personal(evento):
         else:
             st.error(f"❌ Error al guardar en Supabase: {msg}")
 
-# 6. Modal Ficha Detallada (Corregido sin superposición)
+# 6. Modal Ficha Detallada
 def modal_ver_ficha(evento):
     e_id = int(evento["id"])
     nombre_evento = evento.get("evento", "Sin Nombre")
@@ -287,7 +287,7 @@ def modal_ver_ficha(evento):
         res_personal = supabase.table("personal").select("*").eq("evento_id", e_id).execute()
         p_data = res_personal.data[0] if res_personal.data else {}
 
-        # Datos
+        # Datos de fecha y hora
         fecha_fmt = formatear_fecha_larga(ev.get("fecha", ""))
         duracion_str = p_data.get("duracion", "2 horas") if p_data.get("duracion") else "2 horas"
         hora_inicio = ev.get("hora_contrato", "04:30 PM")
@@ -305,10 +305,16 @@ def modal_ver_ficha(evento):
         header_class = "header-risuena" if is_risuena else "header-madai"
         color_fondo = "#D8F3DC" if is_risuena else "#EBD9F3"
 
-        # Contenedor con fondo adaptable
-        st.markdown(f'<div class="card-modal-bg" style="background-color: {color_fondo};">', unsafe_allow_html=True)
+        # Aplicar el color de fondo limpio a todo el cuadro emergente
+        st.markdown(f"""
+            <style>
+            div[data-testid="stDialog"] > div:first-child {{
+                background-color: {color_fondo} !important;
+            }}
+            </style>
+        """, unsafe_allow_html=True)
 
-        # Encabezado Fecha
+        # 1. Encabezado Fecha (pegado al título)
         st.markdown(f'<div class="{header_class}">📅 {fecha_fmt}</div>', unsafe_allow_html=True)
         st.markdown(f'<div class="event-title">🎉 {ev.get("evento", "Sin Nombre")} {tipo_str}</div>', unsafe_allow_html=True)
 
@@ -317,39 +323,36 @@ def modal_ver_ficha(evento):
         st.markdown(f'<div class="data-line">📍 <b>Lugar:</b> {ev.get("direccion", "N/A")}</div>', unsafe_allow_html=True)
         st.markdown(f'<div class="data-line">💵 <b>Adelanto:</b> S/ {adelanto:.2f} | 💰 <b style="color: #D90429;">Pendiente: S/ {pendiente:.2f}</b></div>', unsafe_allow_html=True)
 
-        # Encabezado Personal
-        st.markdown(f'<div class="{header_class}">👥 Personal Asignado</div>', unsafe_allow_html=True)
-
-        # Estructura alineada
-        col_pers_info, col_pers_btn = st.columns([5, 1])
-
-        with col_pers_info:
-            tiene_personal = False
-            if p_data:
-                animador = p_data.get("animador", "")
-                dalinas = p_data.get("dalinas", "")
-                dj = p_data.get("dj", "")
-                staff = p_data.get("staff", "")
-
-                if (animador and animador != "Ninguno(a)") or dalinas or dj or staff:
-                    tiene_personal = True
-
-            if tiene_personal:
-                st.markdown(f'<div class="data-line">🎤 <b>Animador(a):</b> {p_data.get("animador", "Ninguno(a)")}</div>', unsafe_allow_html=True)
-                st.markdown(f'<div class="data-line">💃 <b>Dalinas ({p_data.get("num_dalinas", 0)}):</b> {p_data.get("dalinas", "Ninguna")}</div>', unsafe_allow_html=True)
-                st.markdown(f'<div class="data-line">🎧 <b>DJ:</b> {p_data.get("dj", "N/A")} | 🛠️ <b>Staff:</b> {p_data.get("staff", "N/A")}</div>', unsafe_allow_html=True)
-                if p_data.get('detalles'):
-                    st.markdown(f'<div class="data-line" style="margin-top:4px; font-style:italic;">📝 <b>Notas:</b> {p_data.get("detalles")}</div>', unsafe_allow_html=True)
-            else:
-                st.markdown('<div class="data-line" style="color: #D90429;">⚠️ Aún no se ha asignado personal a este evento.</div>', unsafe_allow_html=True)
-
-        with col_pers_btn:
-            st.write('<div style="margin-top: 5px;"></div>', unsafe_allow_html=True)
-            if st.button("✏️", key=f"btn_edit_lapiz_{ev['id']}", help="Editar Personal"):
+        # 2. Encabezado Personal + Botón de Editar en la misma línea
+        col_hdr, col_btn = st.columns([5, 1], vertical_alignment="center")
+        
+        with col_hdr:
+            st.markdown(f'<div class="{header_class}">👥 Personal Asignado</div>', unsafe_allow_html=True)
+        
+        with col_btn:
+            if st.button("✏️", key=f"btn_edit_lapiz_{ev['id']}", help="Editar Personal", use_container_width=True):
                 st.session_state["abrir_editar_evento"] = ev
                 st.rerun()
 
-        st.markdown('</div>', unsafe_allow_html=True)
+        # 3. Lista de Personal Asignado
+        tiene_personal = False
+        if p_data:
+            animador = p_data.get("animador", "")
+            dalinas = p_data.get("dalinas", "")
+            dj = p_data.get("dj", "")
+            staff = p_data.get("staff", "")
+
+            if (animador and animador != "Ninguno(a)") or dalinas or dj or staff:
+                tiene_personal = True
+
+        if tiene_personal:
+            st.markdown(f'<div class="data-line">🎤 <b>Animador(a):</b> {p_data.get("animador", "Ninguno(a)")}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="data-line">💃 <b>Dalinas ({p_data.get("num_dalinas", 0)}):</b> {p_data.get("dalinas", "Ninguna")}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="data-line">🎧 <b>DJ:</b> {p_data.get("dj", "N/A")} | 🛠️ <b>Staff:</b> {p_data.get("staff", "N/A")}</div>', unsafe_allow_html=True)
+            if p_data.get('detalles'):
+                st.markdown(f'<div class="data-line" style="margin-top:4px; font-style:italic;">📝 <b>Notas:</b> {p_data.get("detalles")}</div>', unsafe_allow_html=True)
+        else:
+            st.markdown('<div class="data-line" style="color: #D90429;">⚠️ Aún no se ha asignado personal a este evento.</div>', unsafe_allow_html=True)
 
     _mostrar_dialog()
 
