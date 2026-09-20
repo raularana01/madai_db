@@ -14,10 +14,38 @@ st.set_page_config(
 # Estilos CSS Unificados
 st.markdown("""
     <style>
-    /* Ajuste para eliminar espacio entre el título del diálogo/encabezado y la fecha */
-    div[data-testid="stDialog"] div[data-testid="stVerticalBlock"] {
-        gap: 0.3rem !important;
-        padding-top: 0px !important;
+    /* Estilo del contenedor principal del modal para evitar superposición */
+    .card-modal-bg {
+        padding: 15px;
+        border-radius: 12px;
+        margin-top: -10px;
+    }
+
+    /* Encabezados Ficha */
+    .header-madai {
+        background-color: #7B2CBF !important;
+        color: white !important;
+        padding: 8px 12px;
+        border-radius: 6px;
+        text-align: center;
+        font-size: 14px;
+        font-weight: bold;
+        margin-top: 5px !important;
+        margin-bottom: 10px !important;
+        text-transform: capitalize;
+    }
+
+    .header-risuena {
+        background-color: #2B9348 !important;
+        color: white !important;
+        padding: 8px 12px;
+        border-radius: 6px;
+        text-align: center;
+        font-size: 14px;
+        font-weight: bold;
+        margin-top: 5px !important;
+        margin-bottom: 10px !important;
+        text-transform: capitalize;
     }
 
     /* Tarjeta MADAI - Lila Claro */
@@ -42,45 +70,19 @@ st.markdown("""
         border-left: 5px solid #2B9348;
     }
 
-    /* Encabezados Ficha */
-    .header-madai {
-        background-color: #7B2CBF !important;
-        color: white !important;
-        padding: 6px 10px;
-        border-radius: 6px;
-        text-align: center;
-        font-size: 13px;
-        font-weight: bold;
-        margin-top: 0px !important;
-        margin-bottom: 6px !important;
-        text-transform: capitalize;
-    }
-
-    .header-risuena {
-        background-color: #2B9348 !important;
-        color: white !important;
-        padding: 6px 10px;
-        border-radius: 6px;
-        text-align: center;
-        font-size: 13px;
-        font-weight: bold;
-        margin-top: 0px !important;
-        margin-bottom: 6px !important;
-        text-transform: capitalize;
-    }
-
     .event-title {
-        font-size: 14px;
+        font-size: 15px;
         font-weight: bold;
         color: #111111 !important;
-        margin-bottom: 4px;
+        margin-bottom: 8px;
+        margin-top: 4px;
     }
 
     .data-line {
-        font-size: 12px;
+        font-size: 13px;
         color: #111111 !important;
-        margin-bottom: 4px;
-        line-height: 1.3;
+        margin-bottom: 6px;
+        line-height: 1.4;
     }
 
     .data-line b, .data-line span {
@@ -102,7 +104,7 @@ def init_supabase() -> Client:
 
 supabase = init_supabase()
 
-# 3. Funciones Auxiliares (Fechas y Horas)
+# 3. Funciones Auxiliares
 def formatear_fecha_larga(fecha_str):
     dias = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
     meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
@@ -269,7 +271,7 @@ def modal_asignar_personal(evento):
         else:
             st.error(f"❌ Error al guardar en Supabase: {msg}")
 
-# 6. Modal Ficha Detallada
+# 6. Modal Ficha Detallada (Corregido sin superposición)
 def modal_ver_ficha(evento):
     e_id = int(evento["id"])
     nombre_evento = evento.get("evento", "Sin Nombre")
@@ -303,17 +305,10 @@ def modal_ver_ficha(evento):
         header_class = "header-risuena" if is_risuena else "header-madai"
         color_fondo = "#D8F3DC" if is_risuena else "#EBD9F3"
 
-        # Aplicar el color de fondo al modal
-        st.markdown(f"""
-            <style>
-            div[data-testid="stDialog"] > div {{
-                background-color: {color_fondo} !important;
-                border-radius: 12px !important;
-            }}
-            </style>
-        """, unsafe_allow_html=True)
+        # Contenedor con fondo adaptable
+        st.markdown(f'<div class="card-modal-bg" style="background-color: {color_fondo};">', unsafe_allow_html=True)
 
-        # Encabezado Fecha (sin espacio superior extra)
+        # Encabezado Fecha
         st.markdown(f'<div class="{header_class}">📅 {fecha_fmt}</div>', unsafe_allow_html=True)
         st.markdown(f'<div class="event-title">🎉 {ev.get("evento", "Sin Nombre")} {tipo_str}</div>', unsafe_allow_html=True)
 
@@ -325,7 +320,7 @@ def modal_ver_ficha(evento):
         # Encabezado Personal
         st.markdown(f'<div class="{header_class}">👥 Personal Asignado</div>', unsafe_allow_html=True)
 
-        # Contenedor alineado: Información de Personal a la izquierda, Botón de editar a la derecha
+        # Estructura alineada
         col_pers_info, col_pers_btn = st.columns([5, 1])
 
         with col_pers_info:
@@ -353,6 +348,8 @@ def modal_ver_ficha(evento):
             if st.button("✏️", key=f"btn_edit_lapiz_{ev['id']}", help="Editar Personal"):
                 st.session_state["abrir_editar_evento"] = ev
                 st.rerun()
+
+        st.markdown('</div>', unsafe_allow_html=True)
 
     _mostrar_dialog()
 
@@ -386,7 +383,6 @@ with tab1:
                 
                 card_class = "card-risuena" if is_risuena else "card-madai"
                 
-                # Evaluación segura de personal
                 personal_lista = ev.get("personal", [])
                 p_data = {}
                 if isinstance(personal_lista, list) and len(personal_lista) > 0:
@@ -403,7 +399,6 @@ with tab1:
                     if (animador and animador != "Ninguno(a)") or dalinas or dj or staff:
                         tiene_personal = True
 
-                # Tarjeta principal
                 st.markdown(f"""
                     <div class="{card_class}">
                         <div class="event-title">🎉 {ev.get('evento', 'Sin Nombre')} {tipo_str}</div>
@@ -414,7 +409,6 @@ with tab1:
                     </div>
                 """, unsafe_allow_html=True)
 
-                # Botones principales
                 if not tiene_personal:
                     col_btn1, col_btn2 = st.columns(2)
                     with col_btn1:
