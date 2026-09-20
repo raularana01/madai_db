@@ -128,8 +128,12 @@ def calcular_hora_fin(hora_inicio_str, duracion_str):
 
 # 4. Funciones de Base de Datos
 def obtener_eventos():
-    response = supabase.table("eventos").select("*, personal(*)").order("fecha", desc=False).execute()
-    return response.data
+    try:
+        response = supabase.table("eventos").select("*, personal(*)").order("fecha", desc=False).execute()
+        return response.data
+    except Exception as e:
+        st.error(f"⚠️ Error de conexión al consultar eventos: {e}")
+        return []
 
 def guardar_evento(datos_evento):
     res = supabase.table("eventos").insert(datos_evento).execute()
