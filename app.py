@@ -11,44 +11,56 @@ st.set_page_config(
     layout="wide"
 )
 
-# Estilos CSS Unificados
+# Estilos CSS Unificados (Soporte dinámico por marca)
 st.markdown("""
     <style>
-    /* Estilo base de tarjeta */
-    .card-box {
-        background-color: #EBD9F3;
+    /* Tarjeta MADAI - Lila Claro */
+    .card-madai {
+        background-color: #EBD9F3 !important;
         border-radius: 8px;
         padding: 10px 12px;
         margin-bottom: 6px;
-        color: #111111;
-        box-shadow: 0px 2px 4px rgba(0,0,0,0.05);
+        color: #111111 !important;
+        box-shadow: 0px 2px 4px rgba(0,0,0,0.1);
+        border-left: 5px solid #7B2CBF;
     }
-    .badge-marca {
-        background-color: #7B2CBF;
-        color: white;
+
+    /* Tarjeta RISUEÑA - Verde Claro */
+    .card-risuena {
+        background-color: #D8F3DC !important;
+        border-radius: 8px;
+        padding: 10px 12px;
+        margin-bottom: 6px;
+        color: #111111 !important;
+        box-shadow: 0px 2px 4px rgba(0,0,0,0.1);
+        border-left: 5px solid #2B9348;
+    }
+
+    /* Badges según marca */
+    .badge-madai {
+        background-color: #7B2CBF !important;
+        color: #FFFFFF !important;
         padding: 2px 6px;
         border-radius: 4px;
         font-weight: bold;
         font-size: 10px;
         text-transform: uppercase;
     }
-    .event-title {
-        font-size: 14px;
+
+    .badge-risuena {
+        background-color: #2B9348 !important;
+        color: #FFFFFF !important;
+        padding: 2px 6px;
+        border-radius: 4px;
         font-weight: bold;
-        color: #000000;
-        margin-bottom: 2px;
+        font-size: 10px;
+        text-transform: uppercase;
     }
-    .data-line {
-        font-size: 12px;
-        color: #111111;
-        margin-bottom: 3px;
-        line-height: 1.3;
-    }
-    
-    /* Encabezado y Secciones Moradas */
-    .ficha-header-bg {
-        background-color: #7B2CBF;
-        color: white;
+
+    /* Encabezados Ficha Ficha */
+    .header-madai {
+        background-color: #7B2CBF !important;
+        color: white !important;
         padding: 6px 10px;
         border-radius: 6px;
         text-align: center;
@@ -57,15 +69,35 @@ st.markdown("""
         margin-bottom: 8px;
         text-transform: capitalize;
     }
-    .ficha-section-bg {
-        background-color: #7B2CBF;
-        color: white;
-        padding: 3px 6px;
-        border-radius: 4px;
-        font-size: 11px;
+
+    .header-risuena {
+        background-color: #2B9348 !important;
+        color: white !important;
+        padding: 6px 10px;
+        border-radius: 6px;
+        text-align: center;
+        font-size: 13px;
         font-weight: bold;
-        margin-top: 8px;
-        margin-bottom: 6px;
+        margin-bottom: 8px;
+        text-transform: capitalize;
+    }
+
+    .event-title {
+        font-size: 14px;
+        font-weight: bold;
+        color: #111111 !important;
+        margin-bottom: 2px;
+    }
+
+    .data-line {
+        font-size: 12px;
+        color: #111111 !important;
+        margin-bottom: 3px;
+        line-height: 1.3;
+    }
+
+    .data-line b, .data-line span {
+        color: #111111 !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -83,9 +115,8 @@ def init_supabase() -> Client:
 
 supabase = init_supabase()
 
-# 3. Funciones Auxiliares (Fechas y Horas)
+# 3. Funciones Auxiliares
 def formatear_fecha_larga(fecha_str):
-    """Convierte YYYY-MM-DD a 'Día, DD de Mes de YYYY'"""
     dias = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
     meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
     try:
@@ -97,7 +128,6 @@ def formatear_fecha_larga(fecha_str):
         return str(fecha_str)
 
 def calcular_hora_fin(hora_inicio_str, duracion_str):
-    """Suma la duración a la hora de contrato"""
     if not duracion_str or str(duracion_str).strip() == "":
         duracion_str = "2 horas"
         
@@ -132,7 +162,7 @@ def obtener_eventos():
         response = supabase.table("eventos").select("*, personal(*)").order("fecha", desc=False).execute()
         return response.data
     except Exception as e:
-        st.error(f"⚠️ Error de conexión al consultar eventos: {e}")
+        st.error(f"⚠️ Error de conexión: {e}")
         return []
 
 def guardar_evento(datos_evento):
@@ -155,7 +185,6 @@ def guardar_personal(evento_id, data_personal):
     except Exception as e:
         return False, str(e)
 
-# Callback para agregar campos de Dalina
 def agregar_dalina_callback(state_key):
     if len(st.session_state[state_key]) < 7:
         st.session_state[state_key].append("")
@@ -250,8 +279,7 @@ def modal_asignar_personal(evento):
         else:
             st.error(f"❌ Error al guardar en Supabase: {msg}")
 
-# 6. Modal Ficha Detallada (Tarjeta unificada en HTML limpio)
-# 6. Modal Ficha Detallada (Solución definitiva a código HTML expuesto)
+# 6. Modal Ficha Detallada (Con fondo dinámico según marca)
 @st.dialog("📋 Ficha del Evento")
 def modal_ver_ficha(evento_id):
     e_id = int(evento_id)
@@ -265,7 +293,6 @@ def modal_ver_ficha(evento_id):
     res_personal = supabase.table("personal").select("*").eq("evento_id", e_id).execute()
     p_data = res_personal.data[0] if res_personal.data else {}
 
-    # Variables
     fecha_fmt = formatear_fecha_larga(ev.get("fecha", ""))
     duracion_str = p_data.get("duracion", "2 horas") if p_data.get("duracion") else "2 horas"
     hora_inicio = ev.get("hora_contrato", "04:30 PM")
@@ -276,33 +303,43 @@ def modal_ver_ficha(evento_id):
     pendiente = costo - adelanto
     tipo_str = f"({ev.get('tipo', 'Show')})" if ev.get('tipo') else ""
 
-    # Tarjeta Principal (Diseño exacto en Streamlit)
-    with st.container(border=True):
-        st.markdown(f'<div class="ficha-header-bg">📅 {fecha_fmt}</div>', unsafe_allow_html=True)
-        
-        col_t1, col_t2 = st.columns([4, 1])
-        with col_t1:
-            st.markdown(f'<div class="event-title">🎉 {ev.get("evento", "Sin Nombre")} {tipo_str}</div>', unsafe_allow_html=True)
-        with col_t2:
-            st.markdown(f'<span class="badge-marca">{ev.get("marca", "MADAI")}</span>', unsafe_allow_html=True)
+    # Determinar estilos por marca
+    marca = ev.get("marca", "Decoraciones MADAI")
+    is_risuena = "RISUEÑA" in marca.upper()
+    
+    card_class = "card-risuena" if is_risuena else "card-madai"
+    badge_class = "badge-risuena" if is_risuena else "badge-madai"
+    header_class = "header-risuena" if is_risuena else "header-madai"
+    header_color = "#2B9348" if is_risuena else "#7B2CBF"
 
-        st.markdown(f'<div class="data-line">⏰ <b>Horario del Show:</b> {rango_horas} (Citación: {ev.get("hora_citacion", "04:00 PM")})</div>', unsafe_allow_html=True)
-        st.markdown(f'<div class="data-line">👤 <b>Cliente:</b> {ev.get("cliente", "N/A")} | 📱 <b>Tel:</b> {ev.get("telefono", "N/A")}</div>', unsafe_allow_html=True)
-        st.markdown(f'<div class="data-line">📍 <b>Lugar:</b> {ev.get("direccion", "N/A")}</div>', unsafe_allow_html=True)
-        st.markdown(f'<div class="data-line">💵 <b>Adelanto:</b> S/ {adelanto:.2f} | 💰 <b style="color: #D90429;">Pendiente: S/ {pendiente:.2f}</b></div>', unsafe_allow_html=True)
+    # Tarjeta Principal con el color de la marca
+    st.markdown(f"""
+        <div class="{card_class}">
+            <div class="{header_class}">📅 {fecha_fmt}</div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <div class="event-title">🎉 {ev.get("evento", "Sin Nombre")} {tipo_str}</div>
+                <span class="{badge_class}">{ev.get("marca", "MADAI")}</span>
+            </div>
+            <div class="data-line">⏰ <b>Horario del Show:</b> {rango_horas} (Citación: {ev.get("hora_citacion", "04:00 PM")})</div>
+            <div class="data-line">👤 <b>Cliente:</b> {ev.get("cliente", "N/A")} | 📱 <b>Tel:</b> {ev.get("telefono", "N/A")}</div>
+            <div class="data-line">📍 <b>Lugar:</b> {ev.get("direccion", "N/A")}</div>
+            <div class="data-line">💵 <b>Adelanto:</b> S/ {adelanto:.2f} | 💰 <b style="color: #D90429;">Pendiente: S/ {pendiente:.2f}</b></div>
+            
+            <div class="{header_class}" style="margin-top: 10px;">👥 Personal Asignado</div>
+    """, unsafe_allow_html=True)
 
-        # Sección Personal
-        st.markdown('<div class="ficha-section-bg">👥 Personal Asignado</div>', unsafe_allow_html=True)
+    if p_data:
+        st.markdown(f"""
+            <div class="data-line">🎤 <b>Animador(a):</b> {p_data.get("animador", "Ninguno(a)")}</div>
+            <div class="data-line">💃 <b>Dalinas ({p_data.get("num_dalinas", 0)}):</b> {p_data.get("dalinas", "Ninguna")}</div>
+            <div class="data-line">🎧 <b>DJ:</b> {p_data.get("dj", "N/A")} | 🛠️ <b>Staff:</b> {p_data.get("staff", "N/A")}</div>
+        """, unsafe_allow_html=True)
+        if p_data.get('detalles'):
+            st.markdown(f'<div class="data-line" style="margin-top:4px; font-style:italic;">📝 <b>Notas:</b> {p_data.get("detalles")}</div>', unsafe_allow_html=True)
+    else:
+        st.markdown('<div class="data-line" style="color: #D90429;">⚠️ Aún no se ha asignado personal a este evento.</div>', unsafe_allow_html=True)
 
-        if p_data:
-            st.markdown(f'<div class="data-line">🎤 <b>Animador(a):</b> {p_data.get("animador", "Ninguno(a)")}</div>', unsafe_allow_html=True)
-            st.markdown(f'<div class="data-line">💃 <b>Dalinas ({p_data.get("num_dalinas", 0)}):</b> {p_data.get("dalinas", "Ninguna")}</div>', unsafe_allow_html=True)
-            st.markdown(f'<div class="data-line">🎧 <b>DJ:</b> {p_data.get("dj", "N/A")} | 🛠️ <b>Staff:</b> {p_data.get("staff", "N/A")}</div>', unsafe_allow_html=True)
-            if p_data.get('detalles'):
-                st.markdown(f'<div class="data-line" style="margin-top:4px; font-style:italic;">📝 <b>Notas:</b> {p_data.get("detalles")}</div>', unsafe_allow_html=True)
-        else:
-            st.markdown('<div class="data-line" style="color: #D90429;">⚠️ Aún no se ha asignado personal a este evento.</div>', unsafe_allow_html=True)
-
+    st.markdown('</div>', unsafe_allow_html=True)
 
 # 7. Vista Principal
 st.title("📅 Agenda Madai")
@@ -323,12 +360,19 @@ with tab1:
                 pendiente = costo - adelanto
                 tipo_str = f"({ev.get('tipo', 'Show')})" if ev.get('tipo') else ""
                 
-                # Tarjeta de evento compacta
+                # Identificar marca
+                marca_str = ev.get('marca', 'Decoraciones MADAI')
+                is_risuena = "RISUEÑA" in marca_str.upper()
+                
+                card_class = "card-risuena" if is_risuena else "card-madai"
+                badge_class = "badge-risuena" if is_risuena else "badge-madai"
+                
+                # Tarjeta compacta con color según marca
                 st.markdown(f"""
-                    <div class="card-box">
+                    <div class="{card_class}">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
                             <div class="event-title">🎉 {ev['evento']} {tipo_str}</div>
-                            <span class="badge-marca">{ev.get('marca', 'MADAI')}</span>
+                            <span class="{badge_class}">{marca_str}</span>
                         </div>
                         <div class="data-line">⏰ <b>Hora:</b> {ev.get('hora_contrato', '04:30 PM')} | <b>Citación:</b> {ev.get('hora_citacion', '04:00 PM')}</div>
                         <div class="data-line">👤 <b>Cliente:</b> {ev.get('cliente', 'N/A')} | 📱 <b>Tel:</b> {ev.get('telefono', 'N/A')}</div>
