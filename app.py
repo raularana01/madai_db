@@ -94,7 +94,7 @@ def init_supabase() -> Client:
 
 supabase = init_supabase()
 
-# 3. Funciones Auxiliares
+# 3. Funciones Auxiliares (Fechas y Horas)
 def formatear_fecha_larga(fecha_str):
     dias = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
     meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
@@ -139,7 +139,7 @@ def calcular_hora_fin(hora_inicio_str, duracion_str):
 def obtener_eventos():
     try:
         response = supabase.table("eventos").select("*, personal(*)").order("fecha", desc=False).execute()
-        return response.data
+        return response.data if response.data else []
     except Exception as e:
         st.error(f"⚠️ Error de conexión al consultar eventos: {e}")
         return []
@@ -259,7 +259,7 @@ def modal_asignar_personal(evento):
         else:
             st.error(f"❌ Error al guardar en Supabase: {msg}")
 
-# 6. Modal Ficha Detallada (El nombre del evento es el título)
+# 6. Modal Ficha Detallada (El título es el nombre del evento)
 def modal_ver_ficha(evento):
     e_id = int(evento["id"])
     nombre_evento = evento.get("evento", "Sin Nombre")
@@ -275,7 +275,7 @@ def modal_ver_ficha(evento):
         res_personal = supabase.table("personal").select("*").eq("evento_id", e_id).execute()
         p_data = res_personal.data[0] if res_personal.data else {}
 
-        # Formatos
+        # Datos
         fecha_fmt = formatear_fecha_larga(ev.get("fecha", ""))
         duracion_str = p_data.get("duracion", "2 horas") if p_data.get("duracion") else "2 horas"
         hora_inicio = ev.get("hora_contrato", "04:30 PM")
@@ -286,14 +286,14 @@ def modal_ver_ficha(evento):
         pendiente = costo - adelanto
         tipo_str = f"({ev.get('tipo', 'Show')})" if ev.get('tipo') else ""
 
-        # Colores por Marca
+        # Marca y Color
         marca = ev.get("marca", "Decoraciones MADAI")
         is_risuena = "RISUEÑA" in marca.upper()
         
         header_class = "header-risuena" if is_risuena else "header-madai"
         color_fondo = "#D8F3DC" if is_risuena else "#EBD9F3"
 
-        # Coloreado total del modal de diálogo
+        # Colorear toda la ventana emergente
         st.markdown(f"""
             <style>
             div[data-testid="stDialog"] > div {{
@@ -303,7 +303,7 @@ def modal_ver_ficha(evento):
             </style>
         """, unsafe_allow_html=True)
 
-        # Contenido Ficha
+        # HTML interno
         st.markdown(f'<div class="{header_class}">📅 {fecha_fmt}</div>', unsafe_allow_html=True)
         st.markdown(f'<div class="event-title">🎉 {ev.get("evento", "Sin Nombre")} {tipo_str}</div>', unsafe_allow_html=True)
 
@@ -321,7 +321,6 @@ def modal_ver_ficha(evento):
             dj = p_data.get("dj", "")
             staff = p_data.get("staff", "")
 
-            # Verificar si realmente hay datos llenos
             if (animador and animador != "Ninguno(a)") or dalinas or dj or staff:
                 tiene_personal = True
 
@@ -332,7 +331,6 @@ def modal_ver_ficha(evento):
             if p_data.get('detalles'):
                 st.markdown(f'<div class="data-line" style="margin-top:4px; font-style:italic;">📝 <b>Notas:</b> {p_data.get("detalles")}</div>', unsafe_allow_html=True)
             
-            # Botón Editar Personal (Solo si YA existen datos)
             st.write("")
             if st.button("✏️ Editar Personal", key=f"btn_edit_pers_modal_{ev['id']}", use_container_width=True):
                 modal_asignar_personal(ev)
@@ -366,9 +364,13 @@ with tab1:
                 
                 card_class = "card-risuena" if is_risuena else "card-madai"
                 
-                # Evaluación de personal
+                # Evaluación segura de personal
                 personal_lista = ev.get("personal", [])
-                p_data = personal_lista[0] if personal_lista else {}
+                p_data = {}
+                if isinstance(personal_lista, list) and len(personal_lista) > 0:
+                    p_data = personal_lista[0]
+                elif isinstance(personal_lista, dict):
+                    p_data = personal_lista
                 
                 tiene_personal = False
                 if p_data:
@@ -379,10 +381,10 @@ with tab1:
                     if (animador and animador != "Ninguno(a)") or dalinas or dj or staff:
                         tiene_personal = True
 
-                # Tarjeta de la lista (Sin Badge)
+                # Tarjeta principal sin el badge de la marca
                 st.markdown(f"""
                     <div class="{card_class}">
-                        <div class="event-title">🎉 {ev['evento']} {tipo_str}</div>
+                        <div class="event-title">🎉 {ev.get('evento', 'Sin Nombre')} {tipo_str}</div>
                         <div class="data-line">⏰ <b>Hora:</b> {ev.get('hora_contrato', '04:30 PM')} | <b>Citación:</b> {ev.get('hora_citacion', '04:00 PM')}</div>
                         <div class="data-line">👤 <b>Cliente:</b> {ev.get('cliente', 'N/A')} | 📱 <b>Tel:</b> {ev.get('telefono', 'N/A')}</div>
                         <div class="data-line">📍 <b>Lugar:</b> {ev.get('direccion', 'N/A')}</div>
@@ -390,7 +392,7 @@ with tab1:
                     </div>
                 """, unsafe_allow_html=True)
 
-                # Si NO tiene personal, se muestra el botón "Asignar Personal" y el botón "Ver Ficha"
+                # Lógica condicional de botones principales
                 if not tiene_personal:
                     col_btn1, col_btn2 = st.columns(2)
                     with col_btn1:
@@ -400,7 +402,6 @@ with tab1:
                         if st.button("📋 Ver Ficha", key=f"btn_ver_{ev['id']}", use_container_width=True):
                             modal_ver_ficha(ev)
                 else:
-                    # Si YA tiene personal, el botón desaparecerá de la vista principal y solo se verá "Ver Ficha"
                     if st.button("📋 Ver Ficha", key=f"btn_ver_{ev['id']}", use_container_width=True):
                         modal_ver_ficha(ev)
 
