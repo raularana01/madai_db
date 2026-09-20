@@ -80,6 +80,28 @@ st.markdown("""
     .data-line b, .data-line span {
         color: #111111 !important;
     }
+
+    /* Estilo para el botón de lápiz pequeño y verde */
+    div[data-testid="stColumn"] button.btn-lapiz-verde {
+        background-color: #2B9348 !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 50% !important;
+        width: 38px !important;
+        height: 38px !important;
+        font-size: 16px !important;
+        padding: 0px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        float: right !important;
+        box-shadow: 0px 2px 5px rgba(0,0,0,0.2) !important;
+    }
+
+    div[data-testid="stColumn"] button.btn-lapiz-verde:hover {
+        background-color: #1B4332 !important;
+        transform: scale(1.05);
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -257,6 +279,8 @@ def modal_asignar_personal(evento):
         
         if exito:
             st.success("✅ ¡Personal guardado correctamente!")
+            if "abrir_editar_evento" in st.session_state:
+                del st.session_state["abrir_editar_evento"]
             st.rerun()
         else:
             st.error(f"❌ Error al guardar en Supabase: {msg}")
@@ -295,7 +319,7 @@ def modal_ver_ficha(evento):
         header_class = "header-risuena" if is_risuena else "header-madai"
         color_fondo = "#D8F3DC" if is_risuena else "#EBD9F3"
 
-        # Aplicar el color de fondo a todo el cuadro del diálogo
+        # Aplicar el color de fondo al modal
         st.markdown(f"""
             <style>
             div[data-testid="stDialog"] > div {{
@@ -328,25 +352,38 @@ def modal_ver_ficha(evento):
                 tiene_personal = True
 
         if tiene_personal:
-            st.markdown(f'<div class="data-line">🎤 <b>Animador(a):</b> {p_data.get("animador", "Ninguno(a)")}</div>', unsafe_allow_html=True)
-            st.markdown(f'<div class="data-line">💃 <b>Dalinas ({p_data.get("num_dalinas", 0)}):</b> {p_data.get("dalinas", "Ninguna")}</div>', unsafe_allow_html=True)
-            st.markdown(f'<div class="data-line">🎧 <b>DJ:</b> {p_data.get("dj", "N/A")} | 🛠️ <b>Staff:</b> {p_data.get("staff", "N/A")}</div>', unsafe_allow_html=True)
-            if p_data.get('detalles'):
-                st.markdown(f'<div class="data-line" style="margin-top:4px; font-style:italic;">📝 <b>Notas:</b> {p_data.get("detalles")}</div>', unsafe_allow_html=True)
+            # Layout con columnas para alinear el lápiz abajo a la derecha
+            col_info, col_btn_edit = st.columns([5, 1])
+            with col_info:
+                st.markdown(f'<div class="data-line">🎤 <b>Animador(a):</b> {p_data.get("animador", "Ninguno(a)")}</div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="data-line">💃 <b>Dalinas ({p_data.get("num_dalinas", 0)}):</b> {p_data.get("dalinas", "Ninguna")}</div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="data-line">🎧 <b>DJ:</b> {p_data.get("dj", "N/A")} | 🛠️ <b>Staff:</b> {p_data.get("staff", "N/A")}</div>', unsafe_allow_html=True)
+                if p_data.get('detalles'):
+                    st.markdown(f'<div class="data-line" style="margin-top:4px; font-style:italic;">📝 <b>Notas:</b> {p_data.get("detalles")}</div>', unsafe_allow_html=True)
             
-            # Botón de lápiz centrado y compacto
-            st.write("")
-            _c1, _c2, _c3 = st.columns([2, 1, 2])
-            with _c2:
-                if st.button("✏️", key=f"btn_edit_pers_modal_{ev['id']}", help="Editar Personal", use_container_width=True):
-                    modal_asignar_personal(ev)
+            with col_btn_edit:
+                st.write('<div style="margin-top: 15px;"></div>', unsafe_allow_html=True)
+                if st.button("✏️", key=f"btn_edit_lapiz_{ev['id']}", help="Editar Personal", type="secondary"):
+                    st.session_state["abrir_editar_evento"] = ev
+                    st.rerun()
         else:
-            st.markdown('<div class="data-line" style="color: #D90429;">⚠️ Aún no se ha asignado personal a este evento.</div>', unsafe_allow_html=True)
+            col_info, col_btn_edit = st.columns([5, 1])
+            with col_info:
+                st.markdown('<div class="data-line" style="color: #D90429;">⚠️ Aún no se ha asignado personal a este evento.</div>', unsafe_allow_html=True)
+            with col_btn_edit:
+                if st.button("✏️", key=f"btn_edit_lapiz_empty_{ev['id']}", help="Asignar Personal"):
+                    st.session_state["abrir_editar_evento"] = ev
+                    st.rerun()
 
     _mostrar_dialog()
 
 
-# 7. Vista Principal
+# 7. Control de Modales por Session State (evita errores de contexto)
+if "abrir_editar_evento" in st.session_state:
+    evento_a_editar = st.session_state["abrir_editar_evento"]
+    modal_asignar_personal(evento_a_editar)
+
+# 8. Vista Principal
 st.title("📅 Agenda Madai")
 
 tab1, tab2 = st.tabs(["📋 Lista de Eventos", "➕ Registrar Evento"])
@@ -398,7 +435,7 @@ with tab1:
                     </div>
                 """, unsafe_allow_html=True)
 
-                # Lógica condicional de botones principales
+                # Botones principales
                 if not tiene_personal:
                     col_btn1, col_btn2 = st.columns(2)
                     with col_btn1:
