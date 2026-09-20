@@ -279,7 +279,7 @@ def modal_asignar_personal(evento):
         else:
             st.error(f"❌ Error al guardar en Supabase: {msg}")
 
-# 6. Modal Ficha Detallada (Con fondo dinámico según marca)
+# 6. Modal Ficha Detallada (Solución a cierre prematuro y código HTML visible)
 @st.dialog("📋 Ficha del Evento")
 def modal_ver_ficha(evento_id):
     e_id = int(evento_id)
@@ -310,9 +310,20 @@ def modal_ver_ficha(evento_id):
     card_class = "card-risuena" if is_risuena else "card-madai"
     badge_class = "badge-risuena" if is_risuena else "badge-madai"
     header_class = "header-risuena" if is_risuena else "header-madai"
-    header_color = "#2B9348" if is_risuena else "#7B2CBF"
 
-    # Tarjeta Principal con el color de la marca
+    # Preparar el bloque del personal
+    if p_data:
+        personal_html = f"""
+            <div class="data-line">🎤 <b>Animador(a):</b> {p_data.get("animador", "Ninguno(a)")}</div>
+            <div class="data-line">💃 <b>Dalinas ({p_data.get("num_dalinas", 0)}):</b> {p_data.get("dalinas", "Ninguna")}</div>
+            <div class="data-line">🎧 <b>DJ:</b> {p_data.get("dj", "N/A")} | 🛠️ <b>Staff:</b> {p_data.get("staff", "N/A")}</div>
+        """
+        if p_data.get('detalles'):
+            personal_html += f'<div class="data-line" style="margin-top:4px; font-style:italic;">📝 <b>Notas:</b> {p_data.get("detalles")}</div>'
+    else:
+        personal_html = '<div class="data-line" style="color: #D90429;">⚠️ Aún no se ha asignado personal a este evento.</div>'
+
+    # Unificar TODA la tarjeta en un solo bloque HTML para evitar que el personal quede afuera
     st.markdown(f"""
         <div class="{card_class}">
             <div class="{header_class}">📅 {fecha_fmt}</div>
@@ -326,20 +337,9 @@ def modal_ver_ficha(evento_id):
             <div class="data-line">💵 <b>Adelanto:</b> S/ {adelanto:.2f} | 💰 <b style="color: #D90429;">Pendiente: S/ {pendiente:.2f}</b></div>
             
             <div class="{header_class}" style="margin-top: 10px;">👥 Personal Asignado</div>
+            {personal_html}
+        </div>
     """, unsafe_allow_html=True)
-
-    if p_data:
-        st.markdown(f"""
-            <div class="data-line">🎤 <b>Animador(a):</b> {p_data.get("animador", "Ninguno(a)")}</div>
-            <div class="data-line">💃 <b>Dalinas ({p_data.get("num_dalinas", 0)}):</b> {p_data.get("dalinas", "Ninguna")}</div>
-            <div class="data-line">🎧 <b>DJ:</b> {p_data.get("dj", "N/A")} | 🛠️ <b>Staff:</b> {p_data.get("staff", "N/A")}</div>
-        """, unsafe_allow_html=True)
-        if p_data.get('detalles'):
-            st.markdown(f'<div class="data-line" style="margin-top:4px; font-style:italic;">📝 <b>Notas:</b> {p_data.get("detalles")}</div>', unsafe_allow_html=True)
-    else:
-        st.markdown('<div class="data-line" style="color: #D90429;">⚠️ Aún no se ha asignado personal a este evento.</div>', unsafe_allow_html=True)
-
-    st.markdown('</div>', unsafe_allow_html=True)
 
 # 7. Vista Principal
 st.title("📅 Agenda Madai")
