@@ -4,23 +4,41 @@ from supabase import create_client, Client
 from datetime import datetime, timedelta
 import re
 
-# 1. Configuración de página
+# ==============================================================================
+# 1. CONFIGURACIÓN DE PÁGINA Y ESTILOS CSS
+# ==============================================================================
 st.set_page_config(
     page_title="Agenda Madai",
     page_icon="📅",
     layout="wide"
 )
 
-# Estilos CSS Unificados
 st.markdown("""
     <style>
-    /* Reducir espacios predeterminados dentro de los modales */
+    /* 1. Ajustes de espacio y eliminación de franjas externas en diálogos */
     div[data-testid="stDialog"] div[data-testid="stVerticalBlock"] {
-        gap: 0.4rem !important;
+        gap: 0.3rem !important;
         padding-top: 0px !important;
     }
 
-    /* Encabezados Ficha */
+    /* 2. Estilo compacto y transparente para el botón del lápiz dentro de modales */
+    div[data-testid="stDialog"] div[data-testid="stButton"] button {
+        border: none !important;
+        background-color: transparent !important;
+        box-shadow: none !important;
+        padding: 4px 8px !important;
+        font-size: 18px !important;
+        margin: 0 !important;
+        height: auto !important;
+        min-height: 0px !important;
+    }
+
+    div[data-testid="stDialog"] div[data-testid="stButton"] button:hover {
+        background-color: rgba(0, 0, 0, 0.08) !important;
+        border-radius: 50% !important;
+    }
+
+    /* 3. Encabezados dentro de la Ficha */
     .header-madai {
         background-color: #7B2CBF !important;
         color: white !important;
@@ -29,8 +47,7 @@ st.markdown("""
         text-align: center;
         font-size: 14px;
         font-weight: bold;
-        margin-top: 0px !important;
-        margin-bottom: 4px !important;
+        margin: 0px !important;
         text-transform: capitalize;
         width: 100%;
     }
@@ -43,13 +60,12 @@ st.markdown("""
         text-align: center;
         font-size: 14px;
         font-weight: bold;
-        margin-top: 0px !important;
-        margin-bottom: 4px !important;
+        margin: 0px !important;
         text-transform: capitalize;
         width: 100%;
     }
 
-    /* Tarjetas principales de la lista */
+    /* 4. Tarjetas principales de la lista general */
     .card-madai {
         background-color: #EBD9F3 !important;
         border-radius: 8px;
@@ -74,8 +90,8 @@ st.markdown("""
         font-size: 15px;
         font-weight: bold;
         color: #111111 !important;
+        margin-top: 4px;
         margin-bottom: 6px;
-        margin-top: 2px;
     }
 
     .data-line {
@@ -91,7 +107,10 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 2. Conexión a Supabase
+
+# ==============================================================================
+# 2. CONEXIÓN A SUPABASE
+# ==============================================================================
 @st.cache_resource
 def init_supabase() -> Client:
     try:
@@ -104,7 +123,10 @@ def init_supabase() -> Client:
 
 supabase = init_supabase()
 
-# 3. Funciones Auxiliares
+
+# ==============================================================================
+# 3. FUNCIONES AUXILIARES
+# ==============================================================================
 def formatear_fecha_larga(fecha_str):
     dias = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
     meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
@@ -145,7 +167,10 @@ def calcular_hora_fin(hora_inicio_str, duracion_str):
     except Exception:
         return f"{hora_inicio_str} ({duracion_str})"
 
-# 4. Funciones de Base de Datos
+
+# ==============================================================================
+# 4. OPERACIONES DE BASE DE DATOS
+# ==============================================================================
 def obtener_eventos():
     try:
         response = supabase.table("eventos").select("*, personal(*)").order("fecha", desc=False).execute()
@@ -174,12 +199,14 @@ def guardar_personal(evento_id, data_personal):
     except Exception as e:
         return False, str(e)
 
-# Callback para agregar campos de Dalina
 def agregar_dalina_callback(state_key):
     if len(st.session_state[state_key]) < 7:
         st.session_state[state_key].append("")
 
-# 5. Modal para Asignar / Editar Personal
+
+# ==============================================================================
+# 5. MODAL PARA ASIGNAR / EDITAR PERSONAL
+# ==============================================================================
 @st.dialog("👤 Personal del Evento")
 def modal_asignar_personal(evento):
     e_id = int(evento["id"])
@@ -271,7 +298,10 @@ def modal_asignar_personal(evento):
         else:
             st.error(f"❌ Error al guardar en Supabase: {msg}")
 
-# 6. Modal Ficha Detallada
+
+# ==============================================================================
+# 6. MODAL FICHA DETALLADA (CORREGIDO)
+# ==============================================================================
 def modal_ver_ficha(evento):
     e_id = int(evento["id"])
     nombre_evento = evento.get("evento", "Sin Nombre")
@@ -314,7 +344,7 @@ def modal_ver_ficha(evento):
             </style>
         """, unsafe_allow_html=True)
 
-        # 1. Encabezado Fecha (pegado al título)
+        # 1. Encabezado Fecha
         st.markdown(f'<div class="{header_class}">📅 {fecha_fmt}</div>', unsafe_allow_html=True)
         st.markdown(f'<div class="event-title">🎉 {ev.get("evento", "Sin Nombre")} {tipo_str}</div>', unsafe_allow_html=True)
 
@@ -323,16 +353,20 @@ def modal_ver_ficha(evento):
         st.markdown(f'<div class="data-line">📍 <b>Lugar:</b> {ev.get("direccion", "N/A")}</div>', unsafe_allow_html=True)
         st.markdown(f'<div class="data-line">💵 <b>Adelanto:</b> S/ {adelanto:.2f} | 💰 <b style="color: #D90429;">Pendiente: S/ {pendiente:.2f}</b></div>', unsafe_allow_html=True)
 
-        # 2. Encabezado Personal + Botón de Editar en la misma línea
-        col_hdr, col_btn = st.columns([5, 1], vertical_alignment="center")
+        st.markdown("<div style='margin-bottom: 6px;'></div>", unsafe_allow_html=True)
+
+        # 2. Encabezado Personal + Botón Lápiz al lado en la misma fila
+        col_hdr, col_btn = st.columns([0.85, 0.15], vertical_alignment="center")
         
         with col_hdr:
             st.markdown(f'<div class="{header_class}">👥 Personal Asignado</div>', unsafe_allow_html=True)
         
         with col_btn:
-            if st.button("✏️", key=f"btn_edit_lapiz_{ev['id']}", help="Editar Personal", use_container_width=True):
+            if st.button("✏️", key=f"btn_edit_lapiz_{ev['id']}", help="Editar Personal"):
                 st.session_state["abrir_editar_evento"] = ev
                 st.rerun()
+
+        st.markdown("<div style='margin-bottom: 4px;'></div>", unsafe_allow_html=True)
 
         # 3. Lista de Personal Asignado
         tiene_personal = False
@@ -357,12 +391,17 @@ def modal_ver_ficha(evento):
     _mostrar_dialog()
 
 
-# 7. Control de Modales por Session State
+# ==============================================================================
+# 7. CONTROL DE NAVEGACIÓN Y SESSION STATE
+# ==============================================================================
 if "abrir_editar_evento" in st.session_state:
     evento_a_editar = st.session_state["abrir_editar_evento"]
     modal_asignar_personal(evento_a_editar)
 
-# 8. Vista Principal
+
+# ==============================================================================
+# 8. VISTA PRINCIPAL
+# ==============================================================================
 st.title("📅 Agenda Madai")
 
 tab1, tab2 = st.tabs(["📋 Lista de Eventos", "➕ Registrar Evento"])
