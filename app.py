@@ -45,6 +45,7 @@ st.markdown("""
         text-align: center;
         font-size: 13px;
         font-weight: bold;
+        margin-top: 0px !important;
         margin-bottom: 8px;
         text-transform: capitalize;
     }
@@ -57,6 +58,7 @@ st.markdown("""
         text-align: center;
         font-size: 13px;
         font-weight: bold;
+        margin-top: 0px !important;
         margin-bottom: 8px;
         text-transform: capitalize;
     }
@@ -259,7 +261,7 @@ def modal_asignar_personal(evento):
         else:
             st.error(f"❌ Error al guardar en Supabase: {msg}")
 
-# 6. Modal Ficha Detallada (El título es el nombre del evento)
+# 6. Modal Ficha Detallada (Alineación y espacio superior ajustado)
 def modal_ver_ficha(evento):
     e_id = int(evento["id"])
     nombre_evento = evento.get("evento", "Sin Nombre")
@@ -293,17 +295,21 @@ def modal_ver_ficha(evento):
         header_class = "header-risuena" if is_risuena else "header-madai"
         color_fondo = "#D8F3DC" if is_risuena else "#EBD9F3"
 
-        # Colorear toda la ventana emergente
+        # Reducción del margen superior del diálogo
         st.markdown(f"""
             <style>
             div[data-testid="stDialog"] > div {{
                 background-color: {color_fondo} !important;
                 border-radius: 12px !important;
+                padding-top: 15px !important;
+            }}
+            div[data-testid="stDialog"] [data-testid="stVerticalBlock"] {{
+                gap: 0.4rem !important;
             }}
             </style>
         """, unsafe_allow_html=True)
 
-        # HTML interno
+        # Encabezado Fecha (Papeado arriba)
         st.markdown(f'<div class="{header_class}">📅 {fecha_fmt}</div>', unsafe_allow_html=True)
         st.markdown(f'<div class="event-title">🎉 {ev.get("evento", "Sin Nombre")} {tipo_str}</div>', unsafe_allow_html=True)
 
@@ -312,7 +318,14 @@ def modal_ver_ficha(evento):
         st.markdown(f'<div class="data-line">📍 <b>Lugar:</b> {ev.get("direccion", "N/A")}</div>', unsafe_allow_html=True)
         st.markdown(f'<div class="data-line">💵 <b>Adelanto:</b> S/ {adelanto:.2f} | 💰 <b style="color: #D90429;">Pendiente: S/ {pendiente:.2f}</b></div>', unsafe_allow_html=True)
 
-        st.markdown(f'<div class="{header_class}" style="margin-top:12px;">👥 Personal Asignado</div>', unsafe_allow_html=True)
+        # Sección Personal con botón ✏️ al lado derecho
+        col_hdr, col_btn_edit = st.columns([5, 1])
+        with col_hdr:
+            st.markdown(f'<div class="{header_class}" style="margin-top:6px; margin-bottom:0px;">👥 Personal Asignado</div>', unsafe_allow_html=True)
+        with col_btn_edit:
+            st.write('<div style="margin-top: 6px;"></div>', unsafe_allow_html=True)
+            if st.button("✏️", key=f"btn_edit_pers_modal_{ev['id']}", help="Editar Personal", use_container_width=True):
+                modal_asignar_personal(ev)
 
         tiene_personal = False
         if p_data:
@@ -330,12 +343,8 @@ def modal_ver_ficha(evento):
             st.markdown(f'<div class="data-line">🎧 <b>DJ:</b> {p_data.get("dj", "N/A")} | 🛠️ <b>Staff:</b> {p_data.get("staff", "N/A")}</div>', unsafe_allow_html=True)
             if p_data.get('detalles'):
                 st.markdown(f'<div class="data-line" style="margin-top:4px; font-style:italic;">📝 <b>Notas:</b> {p_data.get("detalles")}</div>', unsafe_allow_html=True)
-            
-            st.write("")
-            if st.button("✏️ Editar Personal", key=f"btn_edit_pers_modal_{ev['id']}", use_container_width=True):
-                modal_asignar_personal(ev)
         else:
-            st.markdown('<div class="data-line" style="color: #D90429;">⚠️ Aún no se ha asignado personal a este evento.</div>', unsafe_allow_html=True)
+            st.markdown('<div class="data-line" style="color: #D90429; margin-top: 4px;">⚠️ Aún no se ha asignado personal a este evento.</div>', unsafe_allow_html=True)
 
     _mostrar_dialog()
 
@@ -381,7 +390,7 @@ with tab1:
                     if (animador and animador != "Ninguno(a)") or dalinas or dj or staff:
                         tiene_personal = True
 
-                # Tarjeta principal sin el badge de la marca
+                # Tarjeta principal
                 st.markdown(f"""
                     <div class="{card_class}">
                         <div class="event-title">🎉 {ev.get('evento', 'Sin Nombre')} {tipo_str}</div>
