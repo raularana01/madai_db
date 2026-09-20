@@ -15,10 +15,10 @@ st.set_page_config(
 
 st.markdown("""
     <style>
-    /* Reducir espacios predeterminados dentro de los modales */
+    /* Reducir superposición y dar espaciado adecuado dentro del modal */
     div[data-testid="stDialog"] div[data-testid="stVerticalBlock"] {
-        gap: 0.4rem !important;
-        padding-top: 0px !important;
+        gap: 0.8rem !important;
+        padding-top: 5px !important;
     }
 
     /* Encabezados Ficha */
@@ -30,8 +30,8 @@ st.markdown("""
         text-align: center;
         font-size: 14px;
         font-weight: bold;
-        margin-top: 0px !important;
-        margin-bottom: 6px !important;
+        margin-top: 6px !important;
+        margin-bottom: 8px !important;
         text-transform: capitalize;
         width: 100%;
     }
@@ -44,33 +44,35 @@ st.markdown("""
         text-align: center;
         font-size: 14px;
         font-weight: bold;
-        margin-top: 0px !important;
-        margin-bottom: 6px !important;
+        margin-top: 6px !important;
+        margin-bottom: 8px !important;
         text-transform: capitalize;
         width: 100%;
     }
 
-    /* Estilos para que los botones de modificar adapten el color exacto del encabezado */
-    .btn-header-madai button {
-        background-color: #7B2CBF !important;
-        color: white !important;
-        border: none !important;
+    /* Estilo para el botón Modificar Personal en tono amarillo */
+    .btn-modificar-amarillo button {
+        background-color: #FFC107 !important;
+        color: #212529 !important;
+        border: 1px solid #FFB300 !important;
         font-weight: bold !important;
+        border-radius: 8px !important;
+        padding: 8px 16px !important;
+        transition: all 0.2s ease-in-out;
     }
 
-    .btn-header-risuena button {
-        background-color: #2B9348 !important;
-        color: white !important;
-        border: none !important;
-        font-weight: bold !important;
+    .btn-modificar-amarillo button:hover {
+        background-color: #FFB300 !important;
+        color: #000000 !important;
+        border-color: #FFA000 !important;
     }
 
     /* Tarjetas principales de la lista general */
     .card-madai {
         background-color: #EBD9F3 !important;
         border-radius: 8px;
-        padding: 10px 12px;
-        margin-bottom: 6px;
+        padding: 12px 14px;
+        margin-bottom: 8px;
         color: #111111 !important;
         box-shadow: 0px 2px 4px rgba(0,0,0,0.1);
         border-left: 5px solid #7B2CBF;
@@ -79,8 +81,8 @@ st.markdown("""
     .card-risuena {
         background-color: #D8F3DC !important;
         border-radius: 8px;
-        padding: 10px 12px;
-        margin-bottom: 6px;
+        padding: 12px 14px;
+        margin-bottom: 8px;
         color: #111111 !important;
         box-shadow: 0px 2px 4px rgba(0,0,0,0.1);
         border-left: 5px solid #2B9348;
@@ -90,15 +92,16 @@ st.markdown("""
         font-size: 15px;
         font-weight: bold;
         color: #111111 !important;
-        margin-top: 4px;
-        margin-bottom: 6px;
+        margin-top: 6px;
+        margin-bottom: 8px;
     }
 
+    /* Mayor holgura e interlineado entre filas de información */
     .data-line {
         font-size: 13px;
         color: #111111 !important;
-        margin-bottom: 4px;
-        line-height: 1.4;
+        margin-bottom: 8px !important;
+        line-height: 1.6 !important;
     }
 
     .data-line b, .data-line span {
@@ -300,7 +303,7 @@ def modal_asignar_personal(evento):
 
 
 # ==============================================================================
-# 6. MODAL FICHA DETALLADA (ORDEN ANTERIOR RESTAURADO CON BOTÓN EN EL MISMO COLOR)
+# 6. MODAL FICHA DETALLADA (MAYOR ESPACIADO + BOTÓN AMARILLO)
 # ==============================================================================
 def modal_ver_ficha(evento):
     e_id = int(evento["id"])
@@ -333,7 +336,6 @@ def modal_ver_ficha(evento):
         is_risuena = "RISUEÑA" in marca.upper()
         
         header_class = "header-risuena" if is_risuena else "header-madai"
-        btn_class = "btn-header-risuena" if is_risuena else "btn-header-madai"
         color_fondo = "#D8F3DC" if is_risuena else "#EBD9F3"
 
         st.markdown(f"""
@@ -347,7 +349,7 @@ def modal_ver_ficha(evento):
         # 1. Cabecera Fecha
         st.markdown(f'<div class="{header_class}">📅 {fecha_fmt}</div>', unsafe_allow_html=True)
 
-        # 2. Título e Información del evento
+        # 2. Título e Información del evento con holgura
         st.markdown(f'<div class="event-title">🎉 {ev.get("evento", "Sin Nombre")} {tipo_str}</div>', unsafe_allow_html=True)
         st.markdown(f'<div class="data-line">⏰ <b>Horario del Show:</b> {rango_horas} (Citación: {ev.get("hora_citacion", "04:00 PM")})</div>', unsafe_allow_html=True)
         st.markdown(f'<div class="data-line">👤 <b>Cliente:</b> {ev.get("cliente", "N/A")} | 📱 <b>Tel:</b> {ev.get("telefono", "N/A")}</div>', unsafe_allow_html=True)
@@ -373,14 +375,14 @@ def modal_ver_ficha(evento):
             st.markdown(f'<div class="data-line">💃 <b>Dalinas ({p_data.get("num_dalinas", 0)}):</b> {p_data.get("dalinas", "Ninguna")}</div>', unsafe_allow_html=True)
             st.markdown(f'<div class="data-line">🎧 <b>DJ:</b> {p_data.get("dj", "N/A")} | 🛠️ <b>Staff:</b> {p_data.get("staff", "N/A")}</div>', unsafe_allow_html=True)
             if p_data.get('detalles'):
-                st.markdown(f'<div class="data-line" style="margin-top:4px; font-style:italic;">📝 <b>Notas:</b> {p_data.get("detalles")}</div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="data-line" style="margin-top:6px; font-style:italic;">📝 <b>Notas:</b> {p_data.get("detalles")}</div>', unsafe_allow_html=True)
         else:
             st.markdown('<div class="data-line" style="color: #D90429;">⚠️ Aún no se ha asignado personal a este evento.</div>', unsafe_allow_html=True)
 
-        st.markdown("<div style='margin-bottom: 8px;'></div>", unsafe_allow_html=True)
+        st.markdown("<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True)
 
-        # 5. Botón Modificar Personal (al final, del mismo color que la cabecera)
-        st.markdown(f'<div class="{btn_class}">', unsafe_allow_html=True)
+        # 5. Botón Modificar Personal (al final, en tono amarillo)
+        st.markdown('<div class="btn-modificar-amarillo">', unsafe_allow_html=True)
         if st.button("✏️ Modificar Personal", use_container_width=True, key=f"btn_mod_pers_{ev['id']}"):
             st.session_state["abrir_editar_evento"] = ev
             st.rerun()
