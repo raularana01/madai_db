@@ -11,7 +11,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Estilos CSS Unificados (Base para Tarjetas y Badges)
+# Estilos CSS Unificados
 st.markdown("""
     <style>
     /* Tarjeta MADAI - Lila Claro */
@@ -34,27 +34,6 @@ st.markdown("""
         color: #111111 !important;
         box-shadow: 0px 2px 4px rgba(0,0,0,0.1);
         border-left: 5px solid #2B9348;
-    }
-
-    /* Badges según marca */
-    .badge-madai {
-        background-color: #7B2CBF !important;
-        color: #FFFFFF !important;
-        padding: 2px 6px;
-        border-radius: 4px;
-        font-weight: bold;
-        font-size: 10px;
-        text-transform: uppercase;
-    }
-
-    .badge-risuena {
-        background-color: #2B9348 !important;
-        color: #FFFFFF !important;
-        padding: 2px 6px;
-        border-radius: 4px;
-        font-weight: bold;
-        font-size: 10px;
-        text-transform: uppercase;
     }
 
     /* Encabezados Ficha */
@@ -115,9 +94,8 @@ def init_supabase() -> Client:
 
 supabase = init_supabase()
 
-# 3. Funciones Auxiliares (Fechas y Horas)
+# 3. Funciones Auxiliares
 def formatear_fecha_larga(fecha_str):
-    """Convierte YYYY-MM-DD a 'Día, DD de Mes de YYYY'"""
     dias = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
     meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
     try:
@@ -129,7 +107,6 @@ def formatear_fecha_larga(fecha_str):
         return str(fecha_str)
 
 def calcular_hora_fin(hora_inicio_str, duracion_str):
-    """Suma la duración a la hora de contrato"""
     if not duracion_str or str(duracion_str).strip() == "":
         duracion_str = "2 horas"
         
@@ -192,8 +169,8 @@ def agregar_dalina_callback(state_key):
     if len(st.session_state[state_key]) < 7:
         st.session_state[state_key].append("")
 
-# 5. Modal para Asignar Personal
-@st.dialog("👤 Asignar Personal al Evento")
+# 5. Modal para Asignar / Editar Personal
+@st.dialog("👤 Personal del Evento")
 def modal_asignar_personal(evento):
     e_id = int(evento["id"])
     res_p = supabase.table("personal").select("*").eq("evento_id", e_id).execute()
@@ -282,73 +259,87 @@ def modal_asignar_personal(evento):
         else:
             st.error(f"❌ Error al guardar en Supabase: {msg}")
 
-# 6. Modal Ficha Detallada (Coloreado completo del modal por marca)
-@st.dialog("📋 Ficha del Evento")
-def modal_ver_ficha(evento_id):
-    e_id = int(evento_id)
+# 6. Modal Ficha Detallada (El nombre del evento es el título)
+def modal_ver_ficha(evento):
+    e_id = int(evento["id"])
+    nombre_evento = evento.get("evento", "Sin Nombre")
     
-    res_evento = supabase.table("eventos").select("*").eq("id", e_id).execute()
-    if not res_evento.data:
-        st.error("No se encontró el evento.")
-        return
+    @st.dialog(f"🎉 {nombre_evento}")
+    def _mostrar_dialog():
+        res_evento = supabase.table("eventos").select("*").eq("id", e_id).execute()
+        if not res_evento.data:
+            st.error("No se encontró el evento.")
+            return
 
-    ev = res_evento.data[0]
-    res_personal = supabase.table("personal").select("*").eq("evento_id", e_id).execute()
-    p_data = res_personal.data[0] if res_personal.data else {}
+        ev = res_evento.data[0]
+        res_personal = supabase.table("personal").select("*").eq("evento_id", e_id).execute()
+        p_data = res_personal.data[0] if res_personal.data else {}
 
-    # Variables
-    fecha_fmt = formatear_fecha_larga(ev.get("fecha", ""))
-    duracion_str = p_data.get("duracion", "2 horas") if p_data.get("duracion") else "2 horas"
-    hora_inicio = ev.get("hora_contrato", "04:30 PM")
-    rango_horas = calcular_hora_fin(hora_inicio, duracion_str)
+        # Formatos
+        fecha_fmt = formatear_fecha_larga(ev.get("fecha", ""))
+        duracion_str = p_data.get("duracion", "2 horas") if p_data.get("duracion") else "2 horas"
+        hora_inicio = ev.get("hora_contrato", "04:30 PM")
+        rango_horas = calcular_hora_fin(hora_inicio, duracion_str)
 
-    costo = float(ev.get('costo_total', 0) or 0)
-    adelanto = float(ev.get('monto_adelanto', 0) or 0)
-    pendiente = costo - adelanto
-    tipo_str = f"({ev.get('tipo', 'Show')})" if ev.get('tipo') else ""
+        costo = float(ev.get('costo_total', 0) or 0)
+        adelanto = float(ev.get('monto_adelanto', 0) or 0)
+        pendiente = costo - adelanto
+        tipo_str = f"({ev.get('tipo', 'Show')})" if ev.get('tipo') else ""
 
-    # Determinar Marca y Estilos de Fondo
-    marca = ev.get("marca", "Decoraciones MADAI")
-    is_risuena = "RISUEÑA" in marca.upper()
-    
-    badge_class = "badge-risuena" if is_risuena else "badge-madai"
-    header_class = "header-risuena" if is_risuena else "header-madai"
-    color_fondo = "#D8F3DC" if is_risuena else "#EBD9F3"
+        # Colores por Marca
+        marca = ev.get("marca", "Decoraciones MADAI")
+        is_risuena = "RISUEÑA" in marca.upper()
+        
+        header_class = "header-risuena" if is_risuena else "header-madai"
+        color_fondo = "#D8F3DC" if is_risuena else "#EBD9F3"
 
-    # Inyección CSS para cambiar el fondo entero del modal de Streamlit
-    st.markdown(f"""
-        <style>
-        div[data-testid="stDialog"] > div {{
-            background-color: {color_fondo} !important;
-            border-radius: 12px !important;
-        }}
-        </style>
-    """, unsafe_allow_html=True)
+        # Coloreado total del modal de diálogo
+        st.markdown(f"""
+            <style>
+            div[data-testid="stDialog"] > div {{
+                background-color: {color_fondo} !important;
+                border-radius: 12px !important;
+            }}
+            </style>
+        """, unsafe_allow_html=True)
 
-    # Contenido de la Ficha
-    st.markdown(f'<div class="{header_class}">📅 {fecha_fmt}</div>', unsafe_allow_html=True)
-    
-    col_t1, col_t2 = st.columns([4, 1])
-    with col_t1:
+        # Contenido Ficha
+        st.markdown(f'<div class="{header_class}">📅 {fecha_fmt}</div>', unsafe_allow_html=True)
         st.markdown(f'<div class="event-title">🎉 {ev.get("evento", "Sin Nombre")} {tipo_str}</div>', unsafe_allow_html=True)
-    with col_t2:
-        st.markdown(f'<span class="{badge_class}">{ev.get("marca", "MADAI")}</span>', unsafe_allow_html=True)
 
-    st.markdown(f'<div class="data-line">⏰ <b>Horario del Show:</b> {rango_horas} (Citación: {ev.get("hora_citacion", "04:00 PM")})</div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="data-line">👤 <b>Cliente:</b> {ev.get("cliente", "N/A")} | 📱 <b>Tel:</b> {ev.get("telefono", "N/A")}</div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="data-line">📍 <b>Lugar:</b> {ev.get("direccion", "N/A")}</div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="data-line">💵 <b>Adelanto:</b> S/ {adelanto:.2f} | 💰 <b style="color: #D90429;">Pendiente: S/ {pendiente:.2f}</b></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="data-line">⏰ <b>Horario del Show:</b> {rango_horas} (Citación: {ev.get("hora_citacion", "04:00 PM")})</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="data-line">👤 <b>Cliente:</b> {ev.get("cliente", "N/A")} | 📱 <b>Tel:</b> {ev.get("telefono", "N/A")}</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="data-line">📍 <b>Lugar:</b> {ev.get("direccion", "N/A")}</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="data-line">💵 <b>Adelanto:</b> S/ {adelanto:.2f} | 💰 <b style="color: #D90429;">Pendiente: S/ {pendiente:.2f}</b></div>', unsafe_allow_html=True)
 
-    st.markdown(f'<div class="{header_class}" style="margin-top:12px;">👥 Personal Asignado</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="{header_class}" style="margin-top:12px;">👥 Personal Asignado</div>', unsafe_allow_html=True)
 
-    if p_data:
-        st.markdown(f'<div class="data-line">🎤 <b>Animador(a):</b> {p_data.get("animador", "Ninguno(a)")}</div>', unsafe_allow_html=True)
-        st.markdown(f'<div class="data-line">💃 <b>Dalinas ({p_data.get("num_dalinas", 0)}):</b> {p_data.get("dalinas", "Ninguna")}</div>', unsafe_allow_html=True)
-        st.markdown(f'<div class="data-line">🎧 <b>DJ:</b> {p_data.get("dj", "N/A")} | 🛠️ <b>Staff:</b> {p_data.get("staff", "N/A")}</div>', unsafe_allow_html=True)
-        if p_data.get('detalles'):
-            st.markdown(f'<div class="data-line" style="margin-top:4px; font-style:italic;">📝 <b>Notas:</b> {p_data.get("detalles")}</div>', unsafe_allow_html=True)
-    else:
-        st.markdown('<div class="data-line" style="color: #D90429;">⚠️ Aún no se ha asignado personal a este evento.</div>', unsafe_allow_html=True)
+        tiene_personal = False
+        if p_data:
+            animador = p_data.get("animador", "")
+            dalinas = p_data.get("dalinas", "")
+            dj = p_data.get("dj", "")
+            staff = p_data.get("staff", "")
+
+            # Verificar si realmente hay datos llenos
+            if (animador and animador != "Ninguno(a)") or dalinas or dj or staff:
+                tiene_personal = True
+
+        if tiene_personal:
+            st.markdown(f'<div class="data-line">🎤 <b>Animador(a):</b> {p_data.get("animador", "Ninguno(a)")}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="data-line">💃 <b>Dalinas ({p_data.get("num_dalinas", 0)}):</b> {p_data.get("dalinas", "Ninguna")}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="data-line">🎧 <b>DJ:</b> {p_data.get("dj", "N/A")} | 🛠️ <b>Staff:</b> {p_data.get("staff", "N/A")}</div>', unsafe_allow_html=True)
+            if p_data.get('detalles'):
+                st.markdown(f'<div class="data-line" style="margin-top:4px; font-style:italic;">📝 <b>Notas:</b> {p_data.get("detalles")}</div>', unsafe_allow_html=True)
+            
+            # Botón Editar Personal (Solo si YA existen datos)
+            st.write("")
+            if st.button("✏️ Editar Personal", key=f"btn_edit_pers_modal_{ev['id']}", use_container_width=True):
+                modal_asignar_personal(ev)
+        else:
+            st.markdown('<div class="data-line" style="color: #D90429;">⚠️ Aún no se ha asignado personal a este evento.</div>', unsafe_allow_html=True)
+
+    _mostrar_dialog()
 
 
 # 7. Vista Principal
@@ -370,19 +361,28 @@ with tab1:
                 pendiente = costo - adelanto
                 tipo_str = f"({ev.get('tipo', 'Show')})" if ev.get('tipo') else ""
                 
-                # Identificar marca para tarjeta compacta
                 marca_str = ev.get('marca', 'Decoraciones MADAI')
                 is_risuena = "RISUEÑA" in marca_str.upper()
                 
                 card_class = "card-risuena" if is_risuena else "card-madai"
-                badge_class = "badge-risuena" if is_risuena else "badge-madai"
                 
+                # Evaluación de personal
+                personal_lista = ev.get("personal", [])
+                p_data = personal_lista[0] if personal_lista else {}
+                
+                tiene_personal = False
+                if p_data:
+                    animador = p_data.get("animador", "")
+                    dalinas = p_data.get("dalinas", "")
+                    dj = p_data.get("dj", "")
+                    staff = p_data.get("staff", "")
+                    if (animador and animador != "Ninguno(a)") or dalinas or dj or staff:
+                        tiene_personal = True
+
+                # Tarjeta de la lista (Sin Badge)
                 st.markdown(f"""
                     <div class="{card_class}">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
-                            <div class="event-title">🎉 {ev['evento']} {tipo_str}</div>
-                            <span class="{badge_class}">{marca_str}</span>
-                        </div>
+                        <div class="event-title">🎉 {ev['evento']} {tipo_str}</div>
                         <div class="data-line">⏰ <b>Hora:</b> {ev.get('hora_contrato', '04:30 PM')} | <b>Citación:</b> {ev.get('hora_citacion', '04:00 PM')}</div>
                         <div class="data-line">👤 <b>Cliente:</b> {ev.get('cliente', 'N/A')} | 📱 <b>Tel:</b> {ev.get('telefono', 'N/A')}</div>
                         <div class="data-line">📍 <b>Lugar:</b> {ev.get('direccion', 'N/A')}</div>
@@ -390,13 +390,19 @@ with tab1:
                     </div>
                 """, unsafe_allow_html=True)
 
-                col_btn1, col_btn2 = st.columns(2)
-                with col_btn1:
-                    if st.button("👤 Personal", key=f"btn_pers_{ev['id']}", use_container_width=True):
-                        modal_asignar_personal(ev)
-                with col_btn2:
+                # Si NO tiene personal, se muestra el botón "Asignar Personal" y el botón "Ver Ficha"
+                if not tiene_personal:
+                    col_btn1, col_btn2 = st.columns(2)
+                    with col_btn1:
+                        if st.button("👤 Asignar Personal", key=f"btn_pers_{ev['id']}", use_container_width=True):
+                            modal_asignar_personal(ev)
+                    with col_btn2:
+                        if st.button("📋 Ver Ficha", key=f"btn_ver_{ev['id']}", use_container_width=True):
+                            modal_ver_ficha(ev)
+                else:
+                    # Si YA tiene personal, el botón desaparecerá de la vista principal y solo se verá "Ver Ficha"
                     if st.button("📋 Ver Ficha", key=f"btn_ver_{ev['id']}", use_container_width=True):
-                        modal_ver_ficha(ev['id'])
+                        modal_ver_ficha(ev)
 
                 st.markdown("<div style='margin-bottom: 6px;'></div>", unsafe_allow_html=True)
 
