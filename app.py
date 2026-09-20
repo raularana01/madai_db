@@ -15,30 +15,13 @@ st.set_page_config(
 
 st.markdown("""
     <style>
-    /* 1. Ajustes de espacio y eliminación de franjas externas en diálogos */
+    /* Reducir espacios predeterminados dentro de los modales */
     div[data-testid="stDialog"] div[data-testid="stVerticalBlock"] {
-        gap: 0.3rem !important;
+        gap: 0.5rem !important;
         padding-top: 0px !important;
     }
 
-    /* 2. Estilo compacto y transparente para el botón del lápiz dentro de modales */
-    div[data-testid="stDialog"] div[data-testid="stButton"] button {
-        border: none !important;
-        background-color: transparent !important;
-        box-shadow: none !important;
-        padding: 4px 8px !important;
-        font-size: 18px !important;
-        margin: 0 !important;
-        height: auto !important;
-        min-height: 0px !important;
-    }
-
-    div[data-testid="stDialog"] div[data-testid="stButton"] button:hover {
-        background-color: rgba(0, 0, 0, 0.08) !important;
-        border-radius: 50% !important;
-    }
-
-    /* 3. Encabezados dentro de la Ficha */
+    /* Encabezados Ficha */
     .header-madai {
         background-color: #7B2CBF !important;
         color: white !important;
@@ -47,7 +30,8 @@ st.markdown("""
         text-align: center;
         font-size: 14px;
         font-weight: bold;
-        margin: 0px !important;
+        margin-top: 0px !important;
+        margin-bottom: 6px !important;
         text-transform: capitalize;
         width: 100%;
     }
@@ -60,12 +44,13 @@ st.markdown("""
         text-align: center;
         font-size: 14px;
         font-weight: bold;
-        margin: 0px !important;
+        margin-top: 0px !important;
+        margin-bottom: 6px !important;
         text-transform: capitalize;
         width: 100%;
     }
 
-    /* 4. Tarjetas principales de la lista general */
+    /* Tarjetas principales de la lista general */
     .card-madai {
         background-color: #EBD9F3 !important;
         border-radius: 8px;
@@ -300,7 +285,7 @@ def modal_asignar_personal(evento):
 
 
 # ==============================================================================
-# 6. MODAL FICHA DETALLADA (CORREGIDO)
+# 6. MODAL FICHA DETALLADA (ORDENADO Y CON BOTÓN ABAJO)
 # ==============================================================================
 def modal_ver_ficha(evento):
     e_id = int(evento["id"])
@@ -344,31 +329,20 @@ def modal_ver_ficha(evento):
             </style>
         """, unsafe_allow_html=True)
 
-        # 1. Encabezado Fecha
+        # 1. Cabecera Fecha
         st.markdown(f'<div class="{header_class}">📅 {fecha_fmt}</div>', unsafe_allow_html=True)
         st.markdown(f'<div class="event-title">🎉 {ev.get("evento", "Sin Nombre")} {tipo_str}</div>', unsafe_allow_html=True)
 
+        # 2. Información del evento
         st.markdown(f'<div class="data-line">⏰ <b>Horario del Show:</b> {rango_horas} (Citación: {ev.get("hora_citacion", "04:00 PM")})</div>', unsafe_allow_html=True)
         st.markdown(f'<div class="data-line">👤 <b>Cliente:</b> {ev.get("cliente", "N/A")} | 📱 <b>Tel:</b> {ev.get("telefono", "N/A")}</div>', unsafe_allow_html=True)
         st.markdown(f'<div class="data-line">📍 <b>Lugar:</b> {ev.get("direccion", "N/A")}</div>', unsafe_allow_html=True)
         st.markdown(f'<div class="data-line">💵 <b>Adelanto:</b> S/ {adelanto:.2f} | 💰 <b style="color: #D90429;">Pendiente: S/ {pendiente:.2f}</b></div>', unsafe_allow_html=True)
 
-        st.markdown("<div style='margin-bottom: 6px;'></div>", unsafe_allow_html=True)
+        # 3. Cabecera Personal
+        st.markdown(f'<div class="{header_class}">👥 Personal Asignado</div>', unsafe_allow_html=True)
 
-        # 2. Encabezado Personal + Botón Lápiz al lado en la misma fila
-        col_hdr, col_btn = st.columns([0.85, 0.15], vertical_alignment="center")
-        
-        with col_hdr:
-            st.markdown(f'<div class="{header_class}">👥 Personal Asignado</div>', unsafe_allow_html=True)
-        
-        with col_btn:
-            if st.button("✏️", key=f"btn_edit_lapiz_{ev['id']}", help="Editar Personal"):
-                st.session_state["abrir_editar_evento"] = ev
-                st.rerun()
-
-        st.markdown("<div style='margin-bottom: 4px;'></div>", unsafe_allow_html=True)
-
-        # 3. Lista de Personal Asignado
+        # 4. Datos del Personal
         tiene_personal = False
         if p_data:
             animador = p_data.get("animador", "")
@@ -387,6 +361,13 @@ def modal_ver_ficha(evento):
                 st.markdown(f'<div class="data-line" style="margin-top:4px; font-style:italic;">📝 <b>Notas:</b> {p_data.get("detalles")}</div>', unsafe_allow_html=True)
         else:
             st.markdown('<div class="data-line" style="color: #D90429;">⚠️ Aún no se ha asignado personal a este evento.</div>', unsafe_allow_html=True)
+
+        st.markdown("<div style='margin-bottom: 8px;'></div>", unsafe_allow_html=True)
+
+        # 5. Botón Modificar Personal (al final, verde y de ancho completo)
+        if st.button("✏️ Modificar Personal", type="primary", use_container_width=True, key=f"btn_mod_pers_{ev['id']}"):
+            st.session_state["abrir_editar_evento"] = ev
+            st.rerun()
 
     _mostrar_dialog()
 
