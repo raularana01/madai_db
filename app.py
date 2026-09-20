@@ -17,7 +17,7 @@ st.markdown("""
     <style>
     /* Reducir espacios predeterminados dentro de los modales */
     div[data-testid="stDialog"] div[data-testid="stVerticalBlock"] {
-        gap: 0.5rem !important;
+        gap: 0.4rem !important;
         padding-top: 0px !important;
     }
 
@@ -48,6 +48,21 @@ st.markdown("""
         margin-bottom: 6px !important;
         text-transform: capitalize;
         width: 100%;
+    }
+
+    /* Estilo para que los botones tomen el color exacto del encabezado */
+    .btn-header-madai button {
+        background-color: #7B2CBF !important;
+        color: white !important;
+        border: none !important;
+        font-weight: bold !important;
+    }
+
+    .btn-header-risuena button {
+        background-color: #2B9348 !important;
+        color: white !important;
+        border: none !important;
+        font-weight: bold !important;
     }
 
     /* Tarjetas principales de la lista general */
@@ -285,7 +300,7 @@ def modal_asignar_personal(evento):
 
 
 # ==============================================================================
-# 6. MODAL FICHA DETALLADA (ORDENADO Y CON BOTÓN ABAJO)
+# 6. MODAL FICHA DETALLADA (ORDEN Y COLORES DE ENCABEZADO COINCIDENTES)
 # ==============================================================================
 def modal_ver_ficha(evento):
     e_id = int(evento["id"])
@@ -318,9 +333,9 @@ def modal_ver_ficha(evento):
         is_risuena = "RISUEÑA" in marca.upper()
         
         header_class = "header-risuena" if is_risuena else "header-madai"
+        btn_class = "btn-header-risuena" if is_risuena else "btn-header-madai"
         color_fondo = "#D8F3DC" if is_risuena else "#EBD9F3"
 
-        # Aplicar el color de fondo limpio a todo el cuadro emergente
         st.markdown(f"""
             <style>
             div[data-testid="stDialog"] > div:first-child {{
@@ -364,10 +379,12 @@ def modal_ver_ficha(evento):
 
         st.markdown("<div style='margin-bottom: 8px;'></div>", unsafe_allow_html=True)
 
-        # 5. Botón Modificar Personal (al final, verde y de ancho completo)
-        if st.button("✏️ Modificar Personal", type="primary", use_container_width=True, key=f"btn_mod_pers_{ev['id']}"):
+        # 5. Botón Modificar Personal (mismo color exacto que el encabezado)
+        st.markdown(f'<div class="{btn_class}">', unsafe_allow_html=True)
+        if st.button("✏️ Modificar Personal", use_container_width=True, key=f"btn_mod_pers_{ev['id']}"):
             st.session_state["abrir_editar_evento"] = ev
             st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
 
     _mostrar_dialog()
 
