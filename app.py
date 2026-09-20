@@ -50,7 +50,7 @@ st.markdown("""
         width: 100%;
     }
 
-    /* Estilo para que los botones tomen el color exacto del encabezado */
+    /* Estilos para que los botones de modificar adapten el color exacto del encabezado */
     .btn-header-madai button {
         background-color: #7B2CBF !important;
         color: white !important;
@@ -300,7 +300,7 @@ def modal_asignar_personal(evento):
 
 
 # ==============================================================================
-# 6. MODAL FICHA DETALLADA (ORDEN Y COLORES DE ENCABEZADO COINCIDENTES)
+# 6. MODAL FICHA DETALLADA (ORDEN ANTERIOR RESTAURADO CON BOTÓN EN EL MISMO COLOR)
 # ==============================================================================
 def modal_ver_ficha(evento):
     e_id = int(evento["id"])
@@ -346,9 +346,9 @@ def modal_ver_ficha(evento):
 
         # 1. Cabecera Fecha
         st.markdown(f'<div class="{header_class}">📅 {fecha_fmt}</div>', unsafe_allow_html=True)
-        st.markdown(f'<div class="event-title">🎉 {ev.get("evento", "Sin Nombre")} {tipo_str}</div>', unsafe_allow_html=True)
 
-        # 2. Información del evento
+        # 2. Título e Información del evento
+        st.markdown(f'<div class="event-title">🎉 {ev.get("evento", "Sin Nombre")} {tipo_str}</div>', unsafe_allow_html=True)
         st.markdown(f'<div class="data-line">⏰ <b>Horario del Show:</b> {rango_horas} (Citación: {ev.get("hora_citacion", "04:00 PM")})</div>', unsafe_allow_html=True)
         st.markdown(f'<div class="data-line">👤 <b>Cliente:</b> {ev.get("cliente", "N/A")} | 📱 <b>Tel:</b> {ev.get("telefono", "N/A")}</div>', unsafe_allow_html=True)
         st.markdown(f'<div class="data-line">📍 <b>Lugar:</b> {ev.get("direccion", "N/A")}</div>', unsafe_allow_html=True)
@@ -379,7 +379,7 @@ def modal_ver_ficha(evento):
 
         st.markdown("<div style='margin-bottom: 8px;'></div>", unsafe_allow_html=True)
 
-        # 5. Botón Modificar Personal (mismo color exacto que el encabezado)
+        # 5. Botón Modificar Personal (al final, del mismo color que la cabecera)
         st.markdown(f'<div class="{btn_class}">', unsafe_allow_html=True)
         if st.button("✏️ Modificar Personal", use_container_width=True, key=f"btn_mod_pers_{ev['id']}"):
             st.session_state["abrir_editar_evento"] = ev
