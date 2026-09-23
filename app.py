@@ -112,26 +112,35 @@ st.markdown("""
         border-left: 6px solid #023E8A;
     }
 
-    /* Ajuste CSS de la Opción A: Botones chicos pegados justo debajo */
-    .container-botones-card div[data-testid="stButton"] button {
-        margin-top: 0px !important;
+    /* --- FIX PARABOTONES PEGADOS DEFINITIVO --- */
+    /* Anula márgenes superiores e inferiores entre elementos de Streamlit dentro del bloque de tarjeta */
+    div[data-testid="stColumn"] > div {
+        gap: 0px !important;
+    }
+
+    /* Estilo de los botones pegados justo debajo de la tarjeta */
+    .btn-card-attached button {
+        margin-top: -2px !important;
         border-top-left-radius: 0px !important;
         border-top-right-radius: 0px !important;
-        border-top: 1px solid rgba(0,0,0,0.15) !important;
+        border-bottom-left-radius: 8px !important;
+        border-bottom-right-radius: 8px !important;
+        border: 1px solid rgba(0, 0, 0, 0.15) !important;
+        border-top: 1px solid rgba(0, 0, 0, 0.1) !important;
         background-color: #FFFFFF !important;
         color: #111111 !important;
         font-weight: 600 !important;
         font-size: 12px !important;
-        padding: 2px 6px !important;
-        min-height: 30px !important;
-        height: 30px !important;
+        padding: 4px 6px !important;
+        min-height: 32px !important;
+        height: 32px !important;
         transition: all 0.2s ease-in-out;
     }
 
-    .container-botones-card div[data-testid="stButton"] button:hover {
-        background-color: #F5F5F5 !important;
+    .btn-card-attached button:hover {
+        background-color: #F0F0F0 !important;
         color: #000000 !important;
-        border-color: rgba(0,0,0,0.3) !important;
+        border-color: rgba(0, 0, 0, 0.3) !important;
     }
 
     .event-title {
@@ -475,7 +484,7 @@ st.session_state["tab_activa"] = opcion_menu
 st.markdown("<hr style='margin-top: 5px; margin-bottom: 15px;'/>", unsafe_allow_html=True)
 
 # ------------------------------------------------------------------------------
-# PESTAÑA 1: LISTA DE EVENTOS (OPCIÓN A)
+# PESTAÑA 1: LISTA DE EVENTOS (OPCIÓN A CORREGIDA)
 # ------------------------------------------------------------------------------
 if st.session_state["tab_activa"] == "📋 Lista de Eventos":
     eventos = obtener_eventos()
@@ -530,26 +539,27 @@ if st.session_state["tab_activa"] == "📋 Lista de Eventos":
                     </div>
                 """, unsafe_allow_html=True)
 
-                # BOTONES COMPACTOS ALINEADOS HADO A LADO Y PEGADOS A LA TARJETA
-                if es_alquiler_local and not contrato_show:
-                    st.markdown("<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True)
-                else:
-                    st.markdown('<div class="container-botones-card">', unsafe_allow_html=True)
-                    
+                # BOTONES COMPACTOS PEGADOS A LA TARJETA
+                if not (es_alquiler_local and not contrato_show):
                     if not tiene_personal:
-                        col_btn1, col_btn2 = st.columns(2)
-                        with col_btn1:
+                        col_b1, col_b2 = st.columns(2)
+                        with col_b1:
+                            st.markdown('<div class="btn-card-attached">', unsafe_allow_html=True)
                             if st.button("👤 Personal", key=f"btn_pers_{ev['id']}", use_container_width=True):
                                 modal_asignar_personal(ev)
-                        with col_btn2:
+                            st.markdown('</div>', unsafe_allow_html=True)
+                        with col_b2:
+                            st.markdown('<div class="btn-card-attached">', unsafe_allow_html=True)
                             if st.button("📋 Ver Ficha", key=f"btn_ver_{ev['id']}", use_container_width=True):
                                 modal_ver_ficha(ev)
+                            st.markdown('</div>', unsafe_allow_html=True)
                     else:
+                        st.markdown('<div class="btn-card-attached">', unsafe_allow_html=True)
                         if st.button("📋 Ver Ficha", key=f"btn_ver_{ev['id']}", use_container_width=True):
                             modal_ver_ficha(ev)
+                        st.markdown('</div>', unsafe_allow_html=True)
 
-                    st.markdown('</div>', unsafe_allow_html=True)
-                    st.markdown("<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True)
+                st.markdown("<div style='margin-bottom: 16px;'></div>", unsafe_allow_html=True)
 
 
 # ------------------------------------------------------------------------------
