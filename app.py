@@ -374,18 +374,24 @@ st.title("📌 Agenda Virtual MADAI")
 
 tabs = ["📅 Eventos del Día", "📆 Próximos Eventos", "➕ Registrar Evento"]
 
-if "tab_activa" not in st.session_state:
-    st.session_state["tab_activa"] = tabs[0]
+# Inicializar pestaña activa en session_state si no existe
+if "tab_navegacion" not in st.session_state:
+    st.session_state["tab_navegacion"] = tabs[0]
 
-tab_seleccionada = st.radio("Navegación", tabs, horizontal=True, label_visibility="collapsed")
-st.session_state["tab_activa"] = tab_seleccionada
+tab_seleccionada = st.radio(
+    "Navegación", 
+    tabs, 
+    key="tab_navegacion", 
+    horizontal=True, 
+    label_visibility="collapsed"
+)
 
 st.markdown("---")
 
 # ------------------------------------------------------------------------------
 # PESTAÑA 1: EVENTOS DEL DÍA
 # ------------------------------------------------------------------------------
-if st.session_state["tab_activa"] == "📅 Eventos del Día":
+if tab_seleccionada == "📅 Eventos del Día":
     st.subheader("📅 Eventos del Día de Hoy")
     hoy_str = str(date.today())
     eventos_todos = obtener_eventos()
@@ -395,7 +401,7 @@ if st.session_state["tab_activa"] == "📅 Eventos del Día":
 # ------------------------------------------------------------------------------
 # PESTAÑA 2: PRÓXIMOS EVENTOS
 # ------------------------------------------------------------------------------
-elif st.session_state["tab_activa"] == "📆 Próximos Eventos":
+elif tab_seleccionada == "📆 Próximos Eventos":
     st.subheader("📆 Próximos Eventos")
     hoy = date.today()
     limite_3_dias = hoy + timedelta(days=3)
@@ -427,7 +433,7 @@ elif st.session_state["tab_activa"] == "📆 Próximos Eventos":
 # ------------------------------------------------------------------------------
 # PESTAÑA 3: REGISTRAR EVENTO
 # ------------------------------------------------------------------------------
-elif st.session_state["tab_activa"] == "➕ Registrar Evento":
+elif tab_seleccionada == "➕ Registrar Evento":
     st.subheader("➕ Registrar Nuevo Evento")
 
     col1, col2 = st.columns(2)
@@ -449,40 +455,43 @@ elif st.session_state["tab_activa"] == "➕ Registrar Evento":
             hora_c = st.text_input("**Hora del Evento**", value="04:30 PM")
             hora_cit = hora_c
 
+        # CHECKBOX DE ALQUILER (UBICADO INMEDIATAMENTE DESPUÉS DE LA HORA)
+        agregar_alquiler = st.checkbox("➕ **Agregar Alquiler**")
+        
+        desc_alquiler = ""
+        monto_alquiler = 0
+        
+        if agregar_alquiler:
+            desc_alquiler = st.text_input("**Descripción del Alquiler**")
+            monto_alquiler = st.number_input("**Monto del Alquiler (S/)**", min_value=0, step=10, value=250)
+
+        # CÁLCULOS DINÁMICOS DE COSTOS
         if tipo_e == "Show + Deco":
             col_p1, col_p2 = st.columns(2)
             with col_p1:
                 precio_show = st.number_input("**Precio Show (S/)**", min_value=0, step=10, value=250)
             with col_p2:
                 precio_deco = st.number_input("**Precio Deco (S/)**", min_value=0, step=10, value=250)
-            costo_t = precio_show + precio_deco
-            st.info(f"💰 **Monto Total Show + Deco:** S/ {costo_t}")
+            costo_base = precio_show + precio_deco
         else:
-            costo_t = st.number_input("**Monto Total (S/)**", min_value=0, step=10, value=250)
+            costo_base = st.number_input("**Monto Total (S/)**", min_value=0, step=10, value=250)
+
+        costo_t = costo_base + (monto_alquiler if agregar_alquiler else 0)
 
         monto_a = st.number_input("**Monto de Adelanto (S/)**", min_value=0, step=10, value=100)
         pendiente_calc = max(0, costo_t - monto_a)
+        
+        if agregar_alquiler:
+            st.info(f"💰 **Monto Total (incluye Alquiler):** S/ {costo_t}")
+            
         st.markdown(f"🔴 **Pendiente de Pago:** <b style='color: #D90429; font-size: 1.1rem;'>S/ {pendiente_calc}</b>", unsafe_allow_html=True)
 
-        # CHECKBOX FUERA DEL FORMULARIO PARA REACTIVIDAD INMEDIATA
-        agregar_alquiler = st.checkbox("➕ **Agregar Alquiler**")
-        
-        desc_alquiler = ""
-        monto_alquiler = 0
-        
-        # CAMPOS DINÁMICOS QUE APARECEN INMEDIATAMENTE AL MARCAR LA CASILLA
-        if agregar_alquiler:
-            desc_alquiler = st.text_input("**Descripción del Alquiler**")
-            monto_alquiler = st.number_input("**Monto del Alquiler (S/)**", min_value=0, step=10, value=250)
-
-    # FORMULARIO SÓLO PARA EL BOTÓN DE GUARDAR
+    # FORMULARIO DE GUARDADO
     with st.form("form_guardar_evento"):
         st.markdown("<br>", unsafe_allow_html=True)
         guardar_btn = st.form_submit_button("📌 GUARDAR EVENTO", use_container_width=True)
 
         if guardar_btn:
-            costo_final = costo_t + (monto_alquiler if agregar_alquiler else 0)
-            
             nuevo_registro = {
                 "marca": marca,
                 "evento": evento_nom,
@@ -493,10 +502,12 @@ elif st.session_state["tab_activa"] == "➕ Registrar Evento":
                 "fecha": str(fecha_e),
                 "hora_contrato": hora_c,
                 "hora_citacion": hora_cit,
-                "costo_total": float(costo_final),
+                "costo_total": float(costo_t),
                 "monto_adelanto": float(monto_a),
                 "descripcion": f"Alquiler: {desc_alquiler} (S/ {monto_alquiler})" if agregar_alquiler and desc_alquiler else ""
             }
             supabase.table("eventos").insert(nuevo_registro).execute()
-            st.success("¡Evento registrado con éxito!")
+            
+            # Cambiamos la pestaña activa en session_state a "Eventos del Día" y recargamos
+            st.session_state["tab_navegacion"] = tabs[0]
             st.rerun()
