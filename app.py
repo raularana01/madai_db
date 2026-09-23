@@ -153,6 +153,30 @@ st.markdown("""
         margin-bottom: 8px !important;
     }
 
+
+    /* Color amarillo claro para los botones de las tarjetas */
+    .botones-tarjeta button {
+        background-color: #FFF3B0 !important;
+        color: #5C4A00 !important;
+        border: 1px solid #F2D675 !important;
+        min-height: 34px !important;
+        height: 34px !important;
+        padding: 2px 8px !important;
+        font-size: 13px !important;
+        line-height: 1.1 !important;
+        border-radius: 6px !important;
+    }
+
+    .botones-tarjeta button:hover {
+        background-color: #FFE98A !important;
+        color: #4A3B00 !important;
+        border-color: #E8C94A !important;
+    }
+
+    .botones-tarjeta button:active {
+        background-color: #FFE27A !important;
+    }
+
     </style>
 """, unsafe_allow_html=True)
 
