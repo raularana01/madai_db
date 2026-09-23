@@ -622,7 +622,7 @@ elif st.session_state["tab_activa"] == "📆 Próximos Eventos":
     st.subheader("📆 Próximos Eventos")
     
     hoy = date.today()
-    limite_3_dias = hoy + timedelta(dias=3)
+    limite_3_dias = hoy + timedelta(days=3)
     
     col_f1, col_f2 = st.columns([1, 2])
     with col_f1:
