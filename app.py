@@ -503,10 +503,6 @@ def renderizar_lista_eventos(lista_eventos, key_prefix="evt"):
                 if solo_desc:
                     linea_detalle_html = f'<div class="data-line">📦 <b>Alquiler:</b> {solo_desc}</div>'
 
-            # Estado de Atendido
-            atendido_actual = bool(ev.get("atendido", False))
-            estado_atendido_html = '<div class="data-line" style="color: #28a745; font-weight: bold;">✅ EVENTO ATENDIDO</div>' if atendido_actual else ''
-
             html_tarjeta = (
                 f'<div class="{card_class}">'
                 f'<div class="badge-marca {badge_class}">{nombre_marca_tag}</div>'
@@ -517,7 +513,6 @@ def renderizar_lista_eventos(lista_eventos, key_prefix="evt"):
                 f'{linea_direccion_html}'
                 f'{linea_detalle_html}'
                 f'<div class="data-line">💵 <b>Total:</b> S/ {costo:.0f} | 💳 <b>Adelanto:</b> S/ {adelanto:.0f} | <b style="color: #D90429;">Pendiente: S/ {pendiente:.0f}</b></div>'
-                f'{estado_atendido_html}'
                 f'</div>'
             )
 
@@ -549,12 +544,6 @@ def renderizar_lista_eventos(lista_eventos, key_prefix="evt"):
 
             with st.container(key=f"{key_prefix}_event_card_{ev['id']}"):
                 st.markdown(html_tarjeta, unsafe_allow_html=True)
-                
-                # Checkbox para marcar como atendido
-                nuevo_estado_atendido = st.checkbox("✅ Marcar como atendido", value=atendido_actual, key=f"check_atendido_{key_prefix}_{ev['id']}")
-                if nuevo_estado_atendido != atendido_actual:
-                    supabase.table("eventos").update({"atendido": nuevo_estado_atendido}).eq("id", ev["id"]).execute()
-                    st.rerun()
 
                 if es_local and not contrato_show:
                     if st.button("📋 Ver Ficha", key=f"{key_prefix}_btn_ver_{ev['id']}", use_container_width=True):
@@ -750,8 +739,7 @@ elif tab_seleccionada == "REGISTRO":
                 "hora_citacion": hora_cit,
                 "costo_total": float(costo_t),
                 "monto_adelanto": float(monto_a),
-                "descripcion": desc_final,
-                "atendido": False
+                "descripcion": desc_final
             }
             res_ins = supabase.table("eventos").insert(nuevo_registro).execute()
             
