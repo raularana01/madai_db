@@ -34,11 +34,15 @@ def obtener_base64_de_archivo(ruta_archivo):
 fondo_b64 = obtener_base64_de_archivo("fondo.jpeg")
 logo_b64 = obtener_base64_de_archivo("logo.jpeg")
 
-css_fondo = ""
+css_fondo = """
+.stApp {
+    background-color: #f3e8ff;
+}
+"""
 if fondo_b64:
     css_fondo = f"""
     .stApp {{
-        background-image: linear-gradient(rgba(255, 255, 255, 0.88), rgba(255, 255, 255, 0.88)), url("data:image/jpeg;base64,{fondo_b64}");
+        background-image: linear-gradient(rgba(240, 230, 255, 0.65), rgba(240, 230, 255, 0.65)), url("data:image/jpeg;base64,{fondo_b64}");
         background-size: cover;
         background-position: center;
         background-attachment: fixed;
@@ -98,7 +102,7 @@ st.markdown(f"""
     }}
 
     div[data-testid="stRadio"] label {{
-        background-color: rgba(255, 255, 255, 0.7) !important;
+        background-color: rgba(255, 255, 255, 0.85) !important;
         padding: 6px 18px !important;
         border-radius: 20px !important;
         border: 1.5px solid #7B2CBF !important;
@@ -327,15 +331,17 @@ def modal_ver_ficha(evento):
         contrato_show = "SHOW" in desc_raw.upper() or "SHOW" in tipo_raw.upper()
 
         if "local" in marca and contrato_show:
+            monto_show = costo - 600 if costo > 600 else 0
             st.markdown(f'<div class="data-line">🎭 <b>Show:</b> {rango_horas}</div>', unsafe_allow_html=True)
-            st.markdown(f'<div class="data-line">💵 <b>Monto Show:</b> S/ {costo:.0f}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="data-line">🏠 <b>Costo del Local:</b> S/ 600</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="data-line">🎭 <b>Precio del Show:</b> S/ {monto_show:.0f}</div>', unsafe_allow_html=True)
         else:
             if desc_raw:
                 solo_desc = desc_raw.replace("Alquiler:", "").split("(")[0].strip()
                 if solo_desc:
                     st.markdown(f'<div class="data-line">📦 <b>Alquiler:</b> {solo_desc}</div>', unsafe_allow_html=True)
 
-        st.markdown(f'<div class="data-line">💵 <b>Adelanto:</b> S/ {adelanto:.0f} | 💰 <b style="color: #D90429;">Pendiente: S/ {pendiente:.0f}</b></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="data-line">💵 <b>Monto Total:</b> S/ {costo:.0f} | 💳 <b>Adelanto:</b> S/ {adelanto:.0f} | 💰 <b style="color: #D90429;">Pendiente: S/ {pendiente:.0f}</b></div>', unsafe_allow_html=True)
 
         st.markdown(f'<div class="{header_class}">👥 Personal Asignado</div>', unsafe_allow_html=True)
 
@@ -439,7 +445,12 @@ def renderizar_lista_eventos(lista_eventos, key_prefix="evt"):
             if es_local and contrato_show:
                 hora_inicio = ev.get("hora_contrato", "04:30 PM")
                 rango_horas = calcular_hora_fin(hora_inicio, duracion_show)
-                linea_detalle_html = f'<div class="data-line">🎭 <b>Show:</b> {rango_horas}</div><div class="data-line">💵 <b>Monto Show:</b> S/ {costo:.0f}</div>'
+                monto_show = costo - 600 if costo > 600 else 0
+                linea_detalle_html = (
+                    f'<div class="data-line">🎭 <b>Show:</b> {rango_horas}</div>'
+                    f'<div class="data-line">🏠 <b>Costo del Local:</b> S/ 600</div>'
+                    f'<div class="data-line">🎭 <b>Precio del Show:</b> S/ {monto_show:.0f}</div>'
+                )
             elif desc_raw:
                 solo_desc = desc_raw.replace("Alquiler:", "").split("(")[0].strip()
                 if solo_desc:
@@ -454,7 +465,7 @@ def renderizar_lista_eventos(lista_eventos, key_prefix="evt"):
                 f'<div class="data-line">👤 <b>Cliente:</b> {ev.get("cliente", "N/A")} | 📱 <b>Tel:</b> {ev.get("telefono", "N/A")}</div>'
                 f'{linea_direccion_html}'
                 f'{linea_detalle_html}'
-                f'<div class="data-line">💰 <b>Total:</b> S/ {costo:.0f} | <b style="color: #D90429;">Pendiente: S/ {pendiente:.0f}</b></div>'
+                f'<div class="data-line">💵 <b>Total:</b> S/ {costo:.0f} | 💳 <b>Adelanto:</b> S/ {adelanto:.0f} | <b style="color: #D90429;">Pendiente: S/ {pendiente:.0f}</b></div>'
                 f'</div>'
             )
 
@@ -599,32 +610,41 @@ elif tab_seleccionada == "REGISTRO":
             hora_c = st.text_input("**Hora del Evento**", value="04:30 PM")
             hora_cit = hora_c
 
-        agregar_alquiler = st.checkbox("➕ **Agregar Alquiler**")
-        
         desc_alquiler = ""
         monto_alquiler = 0
         
-        if agregar_alquiler:
-            desc_alquiler = st.text_input("**Descripción del Alquiler**")
-            monto_alquiler = st.number_input("**Monto del Alquiler (S/)**", min_value=0, step=10, value=250)
-
-        if tipo_e == "Show + Deco":
-            col_p1, col_p2 = st.columns(2)
-            with col_p1:
-                precio_show = st.number_input("**Precio Show (S/)**", min_value=0, step=10, value=250)
-            with col_p2:
-                precio_deco = st.number_input("**Precio Deco (S/)**", min_value=0, step=10, value=250)
-            costo_base = precio_show + precio_deco
+        # Desglose especial si es Marca LOCAL con Show
+        if marca == "local" and tipo_e in ["Show", "Show + Deco"]:
+            costo_local_fijo = 600
+            st.text_input("**Costo del Local (S/)**", value="600 (Fijo)", disabled=True)
+            precio_show_local = st.number_input("**Precio del Show (S/)**", min_value=0, step=10, value=250)
+            costo_t = costo_local_fijo + precio_show_local
+            st.info(f"🏠 **Costo del Local:** S/ 600 | 🎭 **Precio del Show:** S/ {precio_show_local}")
         else:
-            costo_base = st.number_input("**Monto Total (S/)**", min_value=0, step=10, value=250)
+            agregar_alquiler = st.checkbox("➕ **Agregar Alquiler**")
+            
+            if agregar_alquiler:
+                desc_alquiler = st.text_input("**Descripción del Alquiler**")
+                monto_alquiler = st.number_input("**Monto del Alquiler (S/)**", min_value=0, step=10, value=250)
 
-        costo_t = costo_base + (monto_alquiler if agregar_alquiler else 0)
+            if tipo_e == "Show + Deco":
+                col_p1, col_p2 = st.columns(2)
+                with col_p1:
+                    precio_show = st.number_input("**Precio Show (S/)**", min_value=0, step=10, value=250)
+                with col_p2:
+                    precio_deco = st.number_input("**Precio Deco (S/)**", min_value=0, step=10, value=250)
+                costo_base = precio_show + precio_deco
+            else:
+                costo_base = st.number_input("**Monto Total (S/)**", min_value=0, step=10, value=250)
 
+            costo_t = costo_base + (monto_alquiler if agregar_alquiler else 0)
+
+            if agregar_alquiler:
+                st.info(f"💰 **Monto Total (incluye Alquiler):** S/ {costo_t}")
+
+        st.markdown(f"💵 **Monto Total:** <b style='font-size: 1.1rem;'>S/ {costo_t}</b>", unsafe_allow_html=True)
         monto_a = st.number_input("**Monto de Adelanto (S/)**", min_value=0, step=10, value=100)
         pendiente_calc = max(0, costo_t - monto_a)
-        
-        if agregar_alquiler:
-            st.info(f"💰 **Monto Total (incluye Alquiler):** S/ {costo_t}")
             
         st.markdown(f"🔴 **Pendiente de Pago:** <b style='color: #D90429; font-size: 1.1rem;'>S/ {pendiente_calc}</b>", unsafe_allow_html=True)
 
@@ -645,7 +665,7 @@ elif tab_seleccionada == "REGISTRO":
                 "hora_citacion": hora_cit,
                 "costo_total": float(costo_t),
                 "monto_adelanto": float(monto_a),
-                "descripcion": f"Alquiler: {desc_alquiler} (S/ {monto_alquiler})" if agregar_alquiler and desc_alquiler else ""
+                "descripcion": f"Alquiler: {desc_alquiler} (S/ {monto_alquiler})" if desc_alquiler else ""
             }
             supabase.table("eventos").insert(nuevo_registro).execute()
             
