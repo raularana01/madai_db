@@ -193,11 +193,11 @@ def modal_ver_ficha(evento):
         elif "RISUEÑA" in marca:
             header_class = "header-risuena"
             color_fondo = "#B7E4C7"
-            nombre_marca_header = "SHOWS RISUEÑA"
+            nombre_marca_header = "RISUEÑA"
         else:
             header_class = "header-madai"
             color_fondo = "#E0B0FF"
-            nombre_marca_header = "DECORACIONES MADAI"
+            nombre_marca_header = "MADAI"
 
         st.markdown(f"""
             <style>
