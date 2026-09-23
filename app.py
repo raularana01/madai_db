@@ -432,10 +432,6 @@ if "abrir_editar_evento" in st.session_state:
 # ==============================================================================
 st.title("📅 Agenda Madai")
 
-# Control de pestaña mediante sesión
-if "tab_activa" not in st.session_state:
-    st.session_state["tab_activa"] = 0
-
 tab1, tab2 = st.tabs(["📋 Lista de Eventos", "➕ Registrar Evento"])
 
 with tab1:
@@ -517,10 +513,9 @@ with tab2:
     col_a, col_b = st.columns(2)
     
     with col_a:
-        # Selector de Marcas
         marca = st.selectbox("Marca", ["MADAI", "RISUEÑA", "LOCAL"])
         
-        # SI ES MARCA LOCAL: Oculta tipo de evento y ajusta campos requeridos
+        # SI ES MARCA LOCAL
         if marca == "LOCAL":
             tipo = "Alquiler de Local"
             evento = st.text_input("Temática del Evento")
@@ -529,7 +524,6 @@ with tab2:
             cliente = st.text_input("Nombre del Cliente")
             telefono = st.text_input("Celular")
             
-            # Checkbox para agregar show
             contrata_show = st.checkbox("¿Desea agregar Show o Animación?")
             if contrata_show:
                 hora_inicio_show = st.text_input("Hora Inicio del Show", value="04:30 PM")
@@ -537,22 +531,47 @@ with tab2:
             else:
                 hora_inicio_show = ""
                 monto_show = 0.0
+            
+            contrata_alquiler_extra = False
+            monto_alquiler_extra = 0.0
 
         else:
             opciones_tipo = ["Show", "Decoración", "Show + Decoración", "Alquiler de otros"]
             tipo = st.selectbox("Tipo de Evento", opciones_tipo)
-            fecha = st.date_input("Fecha del Evento")
-            evento = st.text_input("Nombre del Evento / Cumpleañero(a)")
-            cliente = st.text_input("Nombre del Cliente")
-            telefono = st.text_input("Teléfono")
-            contrata_show = False
+            
+            # SI EL TIPO ES "Alquiler de otros" -> Muestra formulario simplificado
+            if tipo == "Alquiler de otros":
+                evento = st.text_input("Descripción del Alquiler")
+                direccion = st.text_input("Dirección / Ubicación")
+                cliente = st.text_input("Nombre del Cliente")
+                telefono = st.text_input("Celular")
+                fecha = st.date_input("Fecha del Evento")
+                hora_contrato = st.text_input("Hora", value="04:00 PM")
+                
+                contrata_show = False
+                contrata_alquiler_extra = False
+                monto_alquiler_extra = 0.0
+            else:
+                fecha = st.date_input("Fecha del Evento")
+                evento = st.text_input("Nombre del Evento / Cumpleañero(a)")
+                cliente = st.text_input("Nombre del Cliente")
+                telefono = st.text_input("Teléfono")
+                contrata_show = False
+                
+                # Checkbox para agregar Alquiler adicional dentro de Show/Decoración
+                contrata_alquiler_extra = st.checkbox("¿Desea agregar Alquiler de otros?")
+                if contrata_alquiler_extra:
+                    desc_alquiler_extra = st.text_input("Descripción del Alquiler")
+                    monto_alquiler_extra = st.number_input("Monto del Alquiler (S/)", min_value=0.0, step=10.0, value=150.0)
+                else:
+                    desc_alquiler_extra = ""
+                    monto_alquiler_extra = 0.0
 
     with col_b:
         if marca == "LOCAL":
             hora_citacion = st.text_input("Hora Citación Staff", value="02:30 PM")
             direccion = st.text_input("Dirección / Ubicación", value="Local MADAI")
             
-            # Cálculo de Costo Limpio
             costo_base_alquiler = 600.0
             costo_total = costo_base_alquiler + monto_show
             
@@ -564,21 +583,37 @@ with tab2:
             monto_adelanto = st.number_input("Monto de Adelanto (S/)", min_value=0.0, max_value=costo_total, step=10.0, value=200.0)
             saldo_pendiente = costo_total - monto_adelanto
             st.markdown(f"**Saldo Pendiente:** <span style='color: #D90429; font-weight: bold;'>S/ {saldo_pendiente:.2f}</span>", unsafe_allow_html=True)
-            
-            concepto_alquiler = f"Alquiler de Local {'+ Show' if contrata_show else ''}"
-            
+
+        elif tipo == "Alquiler de otros":
+            hora_citacion = st.text_input("Hora Citación", value="03:30 PM")
+            costo_total = st.number_input("Costo Total (S/)", min_value=0.0, step=10.0, value=200.0)
+            monto_adelanto = st.number_input("Monto Adelanto (S/)", min_value=0.0, step=10.0, value=50.0)
+            saldo_pendiente = costo_total - monto_adelanto
+            st.markdown(f"**Saldo Pendiente:** <span style='color: #D90429; font-weight: bold;'>S/ {saldo_pendiente:.2f}</span>", unsafe_allow_html=True)
+
         else:
             hora_contrato = st.text_input("Hora Contrato", value="04:30 PM")
             hora_citacion = st.text_input("Hora Citación", value="04:00 PM")
             direccion = st.text_input("Dirección / Ubicación", value="")
-            costo_total = st.number_input("Costo Total (S/)", min_value=0.0, step=10.0, value=300.0)
+            
+            costo_base_servicio = st.number_input("Costo Servicio (S/)", min_value=0.0, step=10.0, value=300.0)
+            costo_total = costo_base_servicio + monto_alquiler_extra
+            
+            if contrata_alquiler_extra:
+                st.markdown(f"**Costo Total Calculado:** S/ {costo_total:.2f} *(Servicio S/ {costo_base_servicio:.2f} + Alquiler S/ {monto_alquiler_extra:.2f})*")
+            else:
+                st.markdown(f"**Costo Total:** S/ {costo_total:.2f}")
+                
             monto_adelanto = st.number_input("Monto Adelanto (S/)", min_value=0.0, step=10.0, value=100.0)
-            concepto_alquiler = st.text_input("Concepto / Alquiler", value=f"Servicio de {tipo}")
+            saldo_pendiente = costo_total - monto_adelanto
+            st.markdown(f"**Saldo Pendiente:** <span style='color: #D90429; font-weight: bold;'>S/ {saldo_pendiente:.2f}</span>", unsafe_allow_html=True)
 
-    # Notas adicionales automáticas
+    # Construcción de notas adicionales automáticas
     notas_extra = ""
     if marca == "LOCAL" and contrata_show:
-        notas_extra = f"SHOW ADICIONAL CONTRATADO: Inicio {hora_inicio_show} (S/ {monto_show:.2f}). "
+        notas_extra += f"SHOW ADICIONAL CONTRATADO: Inicio {hora_inicio_show} (S/ {monto_show:.2f}). "
+    if contrata_alquiler_extra:
+        notas_extra += f"ALQUILER EXTRA CONTRATADO: {desc_alquiler_extra} (S/ {monto_alquiler_extra:.2f}). "
 
     descripcion = st.text_area("Notas adicionales del evento", value=notas_extra)
     
@@ -587,7 +622,7 @@ with tab2:
     
     if btn_crear:
         if not evento or not cliente:
-            st.error("Por favor completa la temática/nombre del evento y del cliente.")
+            st.error("Por favor completa los datos obligatorios del evento y cliente.")
         else:
             nuevo_payload = {
                 "marca": marca,
@@ -601,12 +636,12 @@ with tab2:
                 "direccion": direccion,
                 "costo_total": costo_total,
                 "monto_adelanto": monto_adelanto,
-                "concepto_alquiler": concepto_alquiler,
+                "concepto_alquiler": tipo,
                 "descripcion": descripcion
             }
             guardar_evento(nuevo_payload)
             st.success("✅ ¡Evento guardado exitosamente!")
             
-            # Redirección directa a la pantalla de tarjetas principal
+            # Redirección directa al menú de tarjetas
             st.session_state["tab_activa"] = 0
             st.rerun()
