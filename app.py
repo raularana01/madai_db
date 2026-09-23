@@ -68,9 +68,11 @@ st.markdown("""
         padding: 2px 12px;
     }
 
-    /* Botón Guardar llamativo en Registro */
-    .btn-guardar-llamativo button {
-        background: linear-gradient(135deg, #25D366 0%, #128C7E 100%) !important;
+    /* Botón GUARDAR EVENTO en Verde Llamativo */
+    div[data-testid="stForm"] button[kind="primaryFormSubmit"],
+    div[data-testid="stForm"] button {
+        background-color: #28a745 !important;
+        background-image: none !important;
         color: white !important;
         font-size: 1.1rem !important;
         font-weight: bold !important;
@@ -79,8 +81,8 @@ st.markdown("""
         border-radius: 8px !important;
         box-shadow: 0 4px 6px rgba(0,0,0,0.15) !important;
     }
-    .btn-guardar-llamativo button:hover {
-        background: linear-gradient(135deg, #128C7E 0%, #075E54 100%) !important;
+    div[data-testid="stForm"] button:hover {
+        background-color: #218838 !important;
         color: white !important;
     }
 
@@ -142,13 +144,13 @@ def modal_asignar_personal(evento):
         datos_p = res_p.data[0] if res_p.data else {}
 
         with st.form(key=f"form_personal_{e_id}"):
-            animador = st.text_input("🎤 Animador(a)", value=datos_p.get("animador", ""))
-            dalinas = st.text_input("💃 Dalinas", value=datos_p.get("dalinas", ""))
-            num_dalinas = st.number_input("Número de Dalinas", min_value=0, max_value=20, value=int(datos_p.get("num_dalinas", 0)))
-            dj = st.text_input("🎧 DJ", value=datos_p.get("dj", ""))
-            staff = st.text_input("🛠️ Staff", value=datos_p.get("staff", ""))
-            duracion = st.selectbox("⏱️ Duración del Show", ["1 hora", "2 horas", "3 horas", "4 horas"], index=1)
-            detalles = st.text_area("📝 Notas / Observaciones", value=datos_p.get("detalles", ""))
+            animador = st.text_input("🎤 **Animador(a)**", value=datos_p.get("animador", ""))
+            dalinas = st.text_input("💃 **Dalinas**", value=datos_p.get("dalinas", ""))
+            num_dalinas = st.number_input("**Número de Dalinas**", min_value=0, max_value=20, value=int(datos_p.get("num_dalinas", 0)))
+            dj = st.text_input("🎧 **DJ**", value=datos_p.get("dj", ""))
+            staff = st.text_input("🛠️ **Staff**", value=datos_p.get("staff", ""))
+            duracion = st.selectbox("⏱️ **Duración del Show**", ["1 hora", "2 horas", "3 horas", "4 horas"], index=1)
+            detalles = st.text_area("📝 **Notas / Observaciones**", value=datos_p.get("detalles", ""))
 
             if st.form_submit_button("💾 Guardar Personal", use_container_width=True):
                 payload = {
@@ -226,7 +228,7 @@ def modal_ver_ficha(evento):
         st.markdown(f'<div class="data-line">⏰ <b>Horario:</b> {rango_horas} (Citación: {ev.get("hora_citacion", "04:00 PM")})</div>', unsafe_allow_html=True)
         st.markdown(f'<div class="data-line">👤 <b>Cliente:</b> {ev.get("cliente", "N/A")} | 📱 <b>Tel:</b> {ev.get("telefono", "N/A")}</div>', unsafe_allow_html=True)
         st.markdown(f'<div class="data-line">📍 <b>Lugar:</b> {ev.get("direccion", "N/A")}</div>', unsafe_allow_html=True)
-        st.markdown(f'<div class="data-line">💵 <b>Adelanto:</b> S/ {adelanto:.2f} | 💰 <b style="color: #D90429;">Pendiente: S/ {pendiente:.2f}</b></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="data-line">💵 <b>Adelanto:</b> S/ {adelanto:.0f} | 💰 <b style="color: #D90429;">Pendiente: S/ {pendiente:.0f}</b></div>', unsafe_allow_html=True)
 
         st.markdown(f'<div class="{header_class}">👥 Personal Asignado</div>', unsafe_allow_html=True)
 
@@ -407,7 +409,7 @@ elif st.session_state["tab_activa"] == "📆 Próximos Eventos":
     col_f1, col_f2 = st.columns([1, 2])
     with col_f1:
         fecha_filtrada = st.date_input(
-            "🔎 Filtrar por fecha específica:",
+            "🔎 **Filtrar por fecha específica:**",
             value=None,
             help="Selecciona una fecha para ver solo sus eventos, o borra el campo para ver los próximos 3 días."
         )
@@ -433,60 +435,64 @@ elif st.session_state["tab_activa"] == "📆 Próximos Eventos":
     renderizar_lista_eventos(eventos_filtrados, key_prefix="prox")
 
 # ------------------------------------------------------------------------------
-# PESTAÑA 3: REGISTRAR EVENTO (SIN SEPARADORES NI ENCABEZADOS DE SECCIÓN)
+# PESTAÑA 3: REGISTRAR EVENTO
 # ------------------------------------------------------------------------------
 elif st.session_state["tab_activa"] == "➕ Registrar Evento":
     st.subheader("➕ Registrar Nuevo Evento")
     
+    # Manejamos el estado del checkbox fuera del form para refresco inmediato
+    if "agregar_alquiler_state" not in st.session_state:
+        st.session_state["agregar_alquiler_state"] = False
+
     with st.form("form_nuevo_evento", clear_on_submit=True):
         col1, col2 = st.columns(2)
         
         with col1:
-            marca = st.selectbox("1. Marca", ["madai", "risueña", "local"])
-            evento_nom = st.text_input("2. Nombre del Evento")
-            tipo_e = st.selectbox("3. Tipo de Evento", ["Show", "Show + Deco", "Deco"])
-            cliente = st.text_input("4. Cliente")
-            telefono = st.text_input("5. Número (Teléfono)")
-            direccion = st.text_input("6. Dirección")
-            fecha_e = st.date_input("7. Fecha", value=date.today())
+            marca = st.selectbox("**Marca**", ["madai", "risueña", "local"])
+            evento_nom = st.text_input("**Nombre del Evento**")
+            tipo_e = st.selectbox("**Tipo de Evento**", ["Show", "Show + Deco", "Deco"])
+            cliente = st.text_input("**Cliente**")
+            telefono = st.text_input("**Número (Teléfono)**")
+            direccion = st.text_input("**Dirección**")
+            fecha_e = st.date_input("**Fecha**", value=date.today())
         
         with col2:
             if tipo_e in ["Show", "Show + Deco"]:
-                hora_cit = st.text_input("Hora de Invitación / Citación", value="04:00 PM")
-                hora_c = st.text_input("Hora de Contrato", value="04:30 PM")
+                hora_cit = st.text_input("**Hora de Invitación / Citación**", value="04:00 PM")
+                hora_c = st.text_input("**Hora de Contrato**", value="04:30 PM")
             else:
-                hora_c = st.text_input("Hora del Evento", value="04:30 PM")
+                hora_c = st.text_input("**Hora del Evento**", value="04:30 PM")
                 hora_cit = hora_c
 
             if tipo_e == "Show + Deco":
                 col_p1, col_p2 = st.columns(2)
                 with col_p1:
-                    precio_show = st.number_input("Precio Show (S/)", min_value=0.0, step=10.0, value=0.0)
+                    precio_show = st.number_input("**Precio Show (S/)**", min_value=0, step=10, value=250)
                 with col_p2:
-                    precio_deco = st.number_input("Precio Deco (S/)", min_value=0.0, step=10.0, value=0.0)
+                    precio_deco = st.number_input("**Precio Deco (S/)**", min_value=0, step=10, value=250)
                 costo_t = precio_show + precio_deco
-                st.info(f"💰 **Monto Total Show + Deco:** S/ {costo_t:.2f}")
+                st.info(f"💰 **Monto Total Show + Deco:** S/ {costo_t}")
             else:
-                costo_t = st.number_input("Monto Total (S/)", min_value=0.0, step=10.0, value=0.0)
+                costo_t = st.number_input("**Monto Total (S/)**", min_value=0, step=10, value=250)
 
-            monto_a = st.number_input("Monto de Adelanto (S/)", min_value=0.0, step=10.0, value=0.0)
-            pendiente_calc = max(0.0, costo_t - monto_a)
-            st.markdown(f"🔴 **Pendiente de Pago:** <b style='color: #D90429; font-size: 1.1rem;'>S/ {pendiente_calc:.2f}</b>", unsafe_allow_html=True)
+            monto_a = st.number_input("**Monto de Adelanto (S/)**", min_value=0, step=10, value=100)
+            pendiente_calc = max(0, costo_t - monto_a)
+            st.markdown(f"🔴 **Pendiente de Pago:** <b style='color: #D90429; font-size: 1.1rem;'>S/ {pendiente_calc}</b>", unsafe_allow_html=True)
 
-            agregar_alquiler = st.checkbox("➕ Agregar Alquiler")
+            agregar_alquiler = st.checkbox("➕ **Agregar Alquiler**")
+            
             desc_alquiler = ""
-            monto_alquiler = 0.0
+            monto_alquiler = 0
+            
             if agregar_alquiler:
-                desc_alquiler = st.text_input("Descripción del Alquiler")
-                monto_alquiler = st.number_input("Monto del Alquiler (S/)", min_value=0.0, step=10.0, value=0.0)
+                desc_alquiler = st.text_input("**Descripción del Alquiler**")
+                monto_alquiler = st.number_input("**Monto del Alquiler (S/)**", min_value=0, step=10, value=250)
 
         st.markdown("<br>", unsafe_allow_html=True)
-        st.markdown('<div class="btn-guardar-llamativo">', unsafe_allow_html=True)
         guardar_btn = st.form_submit_button("📌 GUARDAR EVENTO", use_container_width=True)
-        st.markdown('</div>', unsafe_allow_html=True)
 
         if guardar_btn:
-            costo_final = costo_t + (monto_alquiler if agregar_alquiler else 0.0)
+            costo_final = costo_t + (monto_alquiler if agregar_alquiler else 0)
             
             nuevo_registro = {
                 "marca": marca,
@@ -498,8 +504,8 @@ elif st.session_state["tab_activa"] == "➕ Registrar Evento":
                 "fecha": str(fecha_e),
                 "hora_contrato": hora_c,
                 "hora_citacion": hora_cit,
-                "costo_total": costo_final,
-                "monto_adelanto": monto_a,
+                "costo_total": float(costo_final),
+                "monto_adelanto": float(monto_a),
                 "descripcion": f"Alquiler: {desc_alquiler} (S/ {monto_alquiler})" if agregar_alquiler and desc_alquiler else ""
             }
             supabase.table("eventos").insert(nuevo_registro).execute()
