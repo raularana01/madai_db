@@ -110,7 +110,7 @@ def formatear_fecha_larga(fecha_str):
     except Exception:
         return str(fecha_str)
 
-def calcular_hora_fin(hora_inicio_str, duracion_str):
+def calcular_hora_fin(hora_inicio_str, duracion_str="2 horas"):
     try:
         dt_inicio = datetime.strptime(hora_inicio_str.strip(), "%I:%M %p")
         horas_add = 2
@@ -229,10 +229,16 @@ def modal_ver_ficha(evento):
             st.markdown(f'<div class="data-line">📍 <b>Lugar:</b> {ev.get("direccion", "N/A")}</div>', unsafe_allow_html=True)
             
         desc_raw = str(ev.get("descripcion", "") or "").strip()
-        if desc_raw:
-            solo_desc = desc_raw.replace("Alquiler:", "").split("(")[0].strip()
-            if solo_desc:
-                st.markdown(f'<div class="data-line">📦 <b>Alquiler:</b> {solo_desc}</div>', unsafe_allow_html=True)
+        contrato_show = "SHOW" in desc_raw.upper() or "SHOW" in str(ev.get("tipo", "")).upper()
+
+        if "local" in marca and contrato_show:
+            st.markdown(f'<div class="data-line">🎭 <b>Show:</b> {rango_horas}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="data-line">💵 <b>Monto Show:</b> S/ {costo:.0f}</div>', unsafe_allow_html=True)
+        else:
+            if desc_raw:
+                solo_desc = desc_raw.replace("Alquiler:", "").split("(")[0].strip()
+                if solo_desc:
+                    st.markdown(f'<div class="data-line">📦 <b>Alquiler:</b> {solo_desc}</div>', unsafe_allow_html=True)
 
         st.markdown(f'<div class="data-line">💵 <b>Adelanto:</b> S/ {adelanto:.0f} | 💰 <b style="color: #D90429;">Pendiente: S/ {pendiente:.0f}</b></div>', unsafe_allow_html=True)
 
@@ -309,16 +315,19 @@ def renderizar_lista_eventos(lista_eventos, key_prefix="evt"):
                 p_data = personal_lista
             
             tiene_personal = False
+            duracion_show = "2 horas"
             if p_data:
                 animador = p_data.get("animador", "")
                 dalinas = p_data.get("dalinas", "")
                 dj = p_data.get("dj", "")
                 staff = p_data.get("staff", "")
+                duracion_show = p_data.get("duracion", "2 horas") or "2 horas"
                 if (animador and animador != "Ninguno(a)") or dalinas or dj or staff:
                     tiene_personal = True
 
             es_local = "local" in marca_raw
-            contrato_show = "SHOW" in str(ev.get("descripcion", "")).upper() or "SHOW" in tipo_str.upper()
+            desc_raw = str(ev.get("descripcion", "") or "").strip()
+            contrato_show = "SHOW" in desc_raw.upper() or "SHOW" in tipo_str.upper()
 
             # ------------------------------------------------------------------
             # CONSTRUCCIÓN DE LÍNEAS OPCIONALES DE HTML
@@ -328,13 +337,16 @@ def renderizar_lista_eventos(lista_eventos, key_prefix="evt"):
             if not es_local:
                 linea_direccion_html = f'<div class="data-line">📍 <b>Lugar:</b> {ev.get("direccion", "N/A")}</div>'
 
-            # 2. Descripción de Alquiler: Solo muestra la descripción sin precio extra
-            desc_raw = str(ev.get("descripcion", "") or "").strip()
-            linea_alquiler_html = ""
-            if desc_raw:
+            # 2. Lógica para Local + Show vs. Alquiler General
+            linea_detalle_html = ""
+            if es_local and contrato_show:
+                hora_inicio = ev.get("hora_contrato", "04:30 PM")
+                rango_horas = calcular_hora_fin(hora_inicio, duracion_show)
+                linea_detalle_html = f'<div class="data-line">🎭 <b>Show:</b> {rango_horas}</div><div class="data-line">💵 <b>Monto Show:</b> S/ {costo:.0f}</div>'
+            elif desc_raw:
                 solo_desc = desc_raw.replace("Alquiler:", "").split("(")[0].strip()
                 if solo_desc:
-                    linea_alquiler_html = f'<div class="data-line">📦 <b>Alquiler:</b> {solo_desc}</div>'
+                    linea_detalle_html = f'<div class="data-line">📦 <b>Alquiler:</b> {solo_desc}</div>'
 
             # Construcción en bloque unificado para evitar fallos de renderizado Markdown
             html_tarjeta = (
@@ -345,7 +357,7 @@ def renderizar_lista_eventos(lista_eventos, key_prefix="evt"):
                 f'<div class="data-line">⏰ <b>Hora:</b> {ev.get("hora_contrato", "04:30 PM")} | <b>Citación:</b> {ev.get("hora_citacion", "04:00 PM")}</div>'
                 f'<div class="data-line">👤 <b>Cliente:</b> {ev.get("cliente", "N/A")} | 📱 <b>Tel:</b> {ev.get("telefono", "N/A")}</div>'
                 f'{linea_direccion_html}'
-                f'{linea_alquiler_html}'
+                f'{linea_detalle_html}'
                 f'<div class="data-line">💰 <b>Total:</b> S/ {costo:.0f} | <b style="color: #D90429;">Pendiente: S/ {pendiente:.0f}</b></div>'
                 f'</div>'
             )
