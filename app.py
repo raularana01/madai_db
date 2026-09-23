@@ -26,6 +26,12 @@ OPCIONES_ANIMADORAS = ["Madai", "Martha", "Eusy", "Carla", "Lucia", "Ninguno", "
 # Opciones de duración para shows (1.5h a 3h de media en media hora)
 OPCIONES_DURACION = ["1.5 horas", "2 horas", "2.5 horas", "3 horas"]
 
+# Estados globales para controlar modales sin anidamiento
+if "editar_personal_id" not in st.session_state:
+    st.session_state["editar_personal_id"] = None
+if "ver_ficha_id" not in st.session_state:
+    st.session_state["ver_ficha_id"] = None
+
 # ==============================================================================
 # 2. CARGA DE FONDO E IMÁGENES EN BASE64
 # ==============================================================================
@@ -55,29 +61,30 @@ if fondo_b64:
     """
 
 # ==============================================================================
-# 3. ESTILOS CSS PERSONALIZADOS INFANTILES Y COMPACTOS
+# 3. ESTILOS CSS PERSONALIZADOS INFANTILES Y AJUSTE DE CABECERA
 # ==============================================================================
 st.markdown(f"""
     <style>
     {css_fondo}
 
-    /* Reducción general de padding superior de la app */
+    /* Padding superior para que la barra de Streamlit no lo tape */
     .block-container {{
-        padding-top: 1.5rem !important;
+        padding-top: 3.8rem !important;
         padding-bottom: 2rem !important;
     }}
 
-    /* Cabecera Unificada (Logo + Título) */
+    /* Cabecera Unificada (Logo + Título MADAI) */
     .header-container {{
         display: flex;
         align-items: center;
         justify-content: flex-start;
         gap: 12px;
-        margin-bottom: 8px;
+        margin-bottom: 12px;
+        margin-top: 5px;
     }}
 
     .logo-inline {{
-        height: 48px;
+        height: 44px;
         width: auto;
         object-fit: contain;
         border-radius: 6px;
@@ -85,7 +92,7 @@ st.markdown(f"""
 
     .title-inline {{
         font-family: 'Comic Sans MS', 'Chalkboard SE', 'Quicksand', sans-serif;
-        font-size: 2.1rem;
+        font-size: 2.2rem;
         font-weight: 900;
         background: linear-gradient(45deg, #7B2CBF, #FF007F, #FF9F1C, #2B9348);
         -webkit-background-clip: text;
@@ -93,6 +100,7 @@ st.markdown(f"""
         margin: 0;
         padding: 0;
         line-height: 1;
+        letter-spacing: 1px;
     }}
 
     /* Compactar Selector de Pestañas Radio */
@@ -231,187 +239,182 @@ def obtener_eventos():
     return res.data if res.data else []
 
 # ==============================================================================
-# 5. MODALES (EDITAR PERSONAL Y VER FICHA)
+# 5. MODALES DECLARADOS GLOBALMENTE (SIN ANIDAMIENTO)
 # ==============================================================================
-def modal_asignar_personal(evento):
+@st.dialog("👤 Asignar / Editar Personal")
+def dialog_asignar_personal(evento):
     e_id = int(evento["id"])
+    st.write(f"**Evento:** {evento.get('evento', '')} - {evento.get('cliente', '')}")
     
-    @st.dialog("👤 Asignar / Editar Personal")
-    def _mostrar_dialog():
-        st.write(f"**Evento:** {evento.get('evento', '')} - {evento.get('cliente', '')}")
-        
-        res_p = supabase.table("personal").select("*").eq("evento_id", e_id).execute()
-        datos_p = res_p.data[0] if res_p.data else {}
+    res_p = supabase.table("personal").select("*").eq("evento_id", e_id).execute()
+    datos_p = res_p.data[0] if res_p.data else {}
 
-        # 1. Animadora
-        anim_guardada = datos_p.get("animador", "")
-        idx_anim = 0
-        if anim_guardada in OPCIONES_ANIMADORAS:
-            idx_anim = OPCIONES_ANIMADORAS.index(anim_guardada)
-        elif anim_guardada:
-            idx_anim = OPCIONES_ANIMADORAS.index("Otro Animador")
+    # 1. Animadora
+    anim_guardada = datos_p.get("animador", "")
+    idx_anim = 0
+    if anim_guardada in OPCIONES_ANIMADORAS:
+        idx_anim = OPCIONES_ANIMADORAS.index(anim_guardada)
+    elif anim_guardada:
+        idx_anim = OPCIONES_ANIMADORAS.index("Otro Animador")
 
-        anim_sel = st.selectbox("🎤 **Animadora**", OPCIONES_ANIMADORAS, index=idx_anim)
-        
-        if anim_sel == "Otro Animador":
-            animador_final = st.text_input("Escribe el nombre de la Animadora:", value=anim_guardada if anim_guardada not in OPCIONES_ANIMADORAS else "")
+    anim_sel = st.selectbox("🎤 **Animadora**", OPCIONES_ANIMADORAS, index=idx_anim)
+    
+    if anim_sel == "Otro Animador":
+        animador_final = st.text_input("Escribe el nombre de la Animadora:", value=anim_guardada if anim_guardada not in OPCIONES_ANIMADORAS else "")
+    else:
+        animador_final = anim_sel
+
+    # 2. Dalinas
+    st.write("💃 **Dalinas**")
+    num_dalinas_val = int(datos_p.get("num_dalinas", 1) or 1)
+    cant_dalinas = st.number_input("Número de Dalinas", min_value=0, max_value=20, value=num_dalinas_val)
+    
+    dalinas_guardadas_str = datos_p.get("dalinas", "")
+    lista_dalinas_prev = [d.strip() for d in dalinas_guardadas_str.split(",") if d.strip()]
+    
+    nombres_dalinas = []
+    for i in range(int(cant_dalinas)):
+        val_prev = lista_dalinas_prev[i] if i < len(lista_dalinas_prev) else ""
+        nom_d = st.text_input(f"Nombre Dalina {i+1}", value=val_prev, key=f"dalina_input_{e_id}_{i}")
+        if nom_d.strip():
+            nombres_dalinas.append(nom_d.strip())
+    
+    dalinas_final_str = ", ".join(nombres_dalinas)
+
+    # 3. DJ
+    dj_val = st.text_input("🎧 **DJ**", value=datos_p.get("dj", ""))
+
+    # 4. Staff
+    staff_val = st.text_input("🛠️ **Staff**", value=datos_p.get("staff", ""))
+
+    # Duración del show
+    duracion_guardada = datos_p.get("duracion", "2 horas")
+    idx_dur = OPCIONES_DURACION.index(duracion_guardada) if duracion_guardada in OPCIONES_DURACION else 1
+    duracion_val = st.selectbox("⏱️ **Duración del Show**", OPCIONES_DURACION, index=idx_dur)
+
+    # 5. Observaciones
+    obs_val = st.text_area("📝 **Observaciones / Notas**", value=datos_p.get("detalles", ""))
+
+    if st.button("💾 Guardar Personal", use_container_width=True, type="primary"):
+        payload = {
+            "evento_id": e_id,
+            "animador": animador_final,
+            "dalinas": dalinas_final_str,
+            "num_dalinas": int(cant_dalinas),
+            "dj": dj_val,
+            "staff": staff_val,
+            "duracion": duracion_val,
+            "detalles": obs_val
+        }
+        if datos_p:
+            supabase.table("personal").update(payload).eq("id", datos_p["id"]).execute()
         else:
-            animador_final = anim_sel
-
-        # 2. Dalinas
-        st.write("💃 **Dalinas**")
-        num_dalinas_val = int(datos_p.get("num_dalinas", 1) or 1)
-        cant_dalinas = st.number_input("Número de Dalinas", min_value=0, max_value=20, value=num_dalinas_val)
+            supabase.table("personal").insert(payload).execute()
         
-        dalinas_guardadas_str = datos_p.get("dalinas", "")
-        lista_dalinas_prev = [d.strip() for d in dalinas_guardadas_str.split(",") if d.strip()]
-        
-        nombres_dalinas = []
-        for i in range(int(cant_dalinas)):
-            val_prev = lista_dalinas_prev[i] if i < len(lista_dalinas_prev) else ""
-            nom_d = st.text_input(f"Nombre Dalina {i+1}", value=val_prev, key=f"dalina_input_{e_id}_{i}")
-            if nom_d.strip():
-                nombres_dalinas.append(nom_d.strip())
-        
-        dalinas_final_str = ", ".join(nombres_dalinas)
+        st.session_state["editar_personal_id"] = None
+        st.success("¡Personal guardado correctamente!")
+        st.rerun()
 
-        # 3. DJ
-        dj_val = st.text_input("🎧 **DJ**", value=datos_p.get("dj", ""))
 
-        # 4. Staff
-        staff_val = st.text_input("🛠️ **Staff**", value=datos_p.get("staff", ""))
-
-        # Duración del show (1.5h a 3h de media en media hora)
-        duracion_guardada = datos_p.get("duracion", "2 horas")
-        idx_dur = OPCIONES_DURACION.index(duracion_guardada) if duracion_guardada in OPCIONES_DURACION else 1
-        duracion_val = st.selectbox("⏱️ **Duración del Show**", OPCIONES_DURACION, index=idx_dur)
-
-        # 5. Observaciones
-        obs_val = st.text_area("📝 **Observaciones / Notas**", value=datos_p.get("detalles", ""))
-
-        if st.button("💾 Guardar Personal", use_container_width=True, type="primary"):
-            payload = {
-                "evento_id": e_id,
-                "animador": animador_final,
-                "dalinas": dalinas_final_str,
-                "num_dalinas": int(cant_dalinas),
-                "dj": dj_val,
-                "staff": staff_val,
-                "duracion": duracion_val,
-                "detalles": obs_val
-            }
-            if datos_p:
-                supabase.table("personal").update(payload).eq("id", datos_p["id"]).execute()
-            else:
-                supabase.table("personal").insert(payload).execute()
-            
-            st.success("¡Personal guardado correctamente!")
-            st.rerun()
-
-    _mostrar_dialog()
-
-def modal_ver_ficha(evento):
+@st.dialog("📋 Ficha del Evento")
+def dialog_ver_ficha(evento):
     e_id = int(evento["id"])
-    nombre_evento = evento.get("evento", "Sin Nombre")
+    res_evento = supabase.table("eventos").select("*").eq("id", e_id).execute()
+    if not res_evento.data:
+        st.error("No se encontró el evento.")
+        return
+
+    ev = res_evento.data[0]
+    res_personal = supabase.table("personal").select("*").eq("evento_id", e_id).execute()
+    p_data = res_personal.data[0] if res_personal.data else {}
+
+    fecha_fmt = formatear_fecha_larga(ev.get("fecha", ""))
+    duracion_str = p_data.get("duracion", "2 horas") if p_data.get("duracion") else "2 horas"
+    hora_inicio = ev.get("hora_contrato", "04:30 PM")
+    rango_horas = calcular_hora_fin(hora_inicio, duracion_str)
+
+    costo = float(ev.get('costo_total', 0) or 0)
+    adelanto = float(ev.get('monto_adelanto', 0) or 0)
+    pendiente = costo - adelanto
+    tipo_raw = str(ev.get('tipo', 'Show'))
+    tipo_str = f"({tipo_raw})" if tipo_raw else ""
+
+    marca = str(ev.get("marca", "madai")).lower()
+    if "local" in marca:
+        header_class = "header-alquiler"
+        color_fondo = "#A2D2FF"
+        nombre_marca_header = "LOCAL"
+    elif "risueña" in marca:
+        header_class = "header-risuena"
+        color_fondo = "#B7E4C7"
+        nombre_marca_header = "RISUEÑA"
+    else:
+        header_class = "header-madai"
+        color_fondo = "#E0B0FF"
+        nombre_marca_header = "MADAI"
+
+    st.markdown(f"""
+        <style>
+        div[data-testid="stDialog"] > div:first-child {{
+            background-color: {color_fondo} !important;
+        }}
+        </style>
+    """, unsafe_allow_html=True)
+
+    st.markdown(f'<div class="{header_class}">🏷️ {nombre_marca_header} — 📅 {fecha_fmt}</div>', unsafe_allow_html=True)
     
-    @st.dialog(f"🎉 {nombre_evento}")
-    def _mostrar_dialog():
-        res_evento = supabase.table("eventos").select("*").eq("id", e_id).execute()
-        if not res_evento.data:
-            st.error("No se encontró el evento.")
-            return
+    # Resumen del Evento
+    st.markdown(f'<div class="event-title">🎉 <b>Nombre del Evento:</b> {ev.get("evento", "Sin Nombre")} {tipo_str}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="data-line">👤 <b>Cliente:</b> {ev.get("cliente", "N/A")} | 📱 <b>Tel:</b> {ev.get("telefono", "N/A")}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="data-line">⏰ <b>Hora de Contrato:</b> {ev.get("hora_contrato", "04:30 PM")} (Citación: {ev.get("hora_citacion", "04:00 PM")})</div>', unsafe_allow_html=True)
+    
+    if "local" not in marca:
+        st.markdown(f'<div class="data-line">📍 <b>Dirección:</b> {ev.get("direccion", "N/A")}</div>', unsafe_allow_html=True)
 
-        ev = res_evento.data[0]
-        res_personal = supabase.table("personal").select("*").eq("evento_id", e_id).execute()
-        p_data = res_personal.data[0] if res_personal.data else {}
+    # Desglose de Local + Show
+    desc_raw = str(ev.get("descripcion", "") or "").strip()
+    contrato_show = "SHOW" in desc_raw.upper() or "SHOW" in tipo_raw.upper()
 
-        fecha_fmt = formatear_fecha_larga(ev.get("fecha", ""))
-        duracion_str = p_data.get("duracion", "2 horas") if p_data.get("duracion") else "2 horas"
-        hora_inicio = ev.get("hora_contrato", "04:30 PM")
-        rango_horas = calcular_hora_fin(hora_inicio, duracion_str)
+    if "local" in marca and contrato_show:
+        monto_show = costo - 600 if costo > 600 else 0
+        st.markdown(f'<div class="data-line">🏠 <b>Costo del Local:</b> S/ 600</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="data-line">🎭 <b>Precio del Show:</b> S/ {monto_show:.0f}</div>', unsafe_allow_html=True)
+    elif desc_raw:
+        solo_desc = desc_raw.replace("Alquiler:", "").split("(")[0].strip()
+        if solo_desc:
+            st.markdown(f'<div class="data-line">📦 <b>Alquiler:</b> {solo_desc}</div>', unsafe_allow_html=True)
 
-        costo = float(ev.get('costo_total', 0) or 0)
-        adelanto = float(ev.get('monto_adelanto', 0) or 0)
-        pendiente = costo - adelanto
-        tipo_raw = str(ev.get('tipo', 'Show'))
-        tipo_str = f"({tipo_raw})" if tipo_raw else ""
+    st.markdown(f'<div class="data-line">💵 <b>Monto Total:</b> S/ {costo:.0f} | 💳 <b>Adelanto:</b> S/ {adelanto:.0f} | 💰 <b style="color: #D90429;">Pendiente: S/ {pendiente:.0f}</b></div>', unsafe_allow_html=True)
 
-        marca = str(ev.get("marca", "madai")).lower()
-        if "local" in marca:
-            header_class = "header-alquiler"
-            color_fondo = "#A2D2FF"
-            nombre_marca_header = "LOCAL"
-        elif "risueña" in marca:
-            header_class = "header-risuena"
-            color_fondo = "#B7E4C7"
-            nombre_marca_header = "RISUEÑA"
-        else:
-            header_class = "header-madai"
-            color_fondo = "#E0B0FF"
-            nombre_marca_header = "MADAI"
+    # Resumen de Personal Asignado
+    st.markdown(f'<div class="{header_class}">👥 Personal Asignado</div>', unsafe_allow_html=True)
 
-        st.markdown(f"""
-            <style>
-            div[data-testid="stDialog"] > div:first-child {{
-                background-color: {color_fondo} !important;
-            }}
-            </style>
-        """, unsafe_allow_html=True)
+    animador = p_data.get("animador", "")
+    dalinas = p_data.get("dalinas", "")
+    dj = p_data.get("dj", "")
+    staff = p_data.get("staff", "")
+    detalles = p_data.get("detalles", "")
 
-        st.markdown(f'<div class="{header_class}">🏷️ {nombre_marca_header} — 📅 {fecha_fmt}</div>', unsafe_allow_html=True)
-        
-        # Resumen del Evento
-        st.markdown(f'<div class="event-title">🎉 <b>Nombre del Evento:</b> {ev.get("evento", "Sin Nombre")} {tipo_str}</div>', unsafe_allow_html=True)
-        st.markdown(f'<div class="data-line">👤 <b>Cliente:</b> {ev.get("cliente", "N/A")} | 📱 <b>Tel:</b> {ev.get("telefono", "N/A")}</div>', unsafe_allow_html=True)
-        st.markdown(f'<div class="data-line">⏰ <b>Hora de Contrato:</b> {ev.get("hora_contrato", "04:30 PM")} (Citación: {ev.get("hora_citacion", "04:00 PM")})</div>', unsafe_allow_html=True)
-        
-        if "local" not in marca:
-            st.markdown(f'<div class="data-line">📍 <b>Dirección:</b> {ev.get("direccion", "N/A")}</div>', unsafe_allow_html=True)
+    tiene_personal = bool((animador and animador != "Ninguno") or dalinas or dj or staff)
 
-        # Desglose de Local + Show
-        desc_raw = str(ev.get("descripcion", "") or "").strip()
-        contrato_show = "SHOW" in desc_raw.upper() or "SHOW" in tipo_raw.upper()
+    if tiene_personal:
+        st.markdown(f'<div class="data-line">🎤 <b>Animadora:</b> {animador if animador else "No asignada"}</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="data-line">💃 <b>Dalinas ({p_data.get("num_dalinas", 0)}):</b> {dalinas if dalinas else "Ninguna"}</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="data-line">🎧 <b>DJ:</b> {dj if dj else "No asignado"}</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="data-line">🛠️ <b>Staff:</b> {staff if staff else "No asignado"}</div>', unsafe_allow_html=True)
+        if detalles:
+            st.markdown(f'<div class="data-line" style="margin-top:6px; font-style:italic;">📝 <b>Observaciones:</b> {detalles}</div>', unsafe_allow_html=True)
+    else:
+        st.markdown('<div class="data-line" style="color: #D90429;">⚠️ Aún no se ha asignado personal a este evento.</div>', unsafe_allow_html=True)
 
-        if "local" in marca and contrato_show:
-            monto_show = costo - 600 if costo > 600 else 0
-            st.markdown(f'<div class="data-line">🏠 <b>Costo del Local:</b> S/ 600</div>', unsafe_allow_html=True)
-            st.markdown(f'<div class="data-line">🎭 <b>Precio del Show:</b> S/ {monto_show:.0f}</div>', unsafe_allow_html=True)
-        elif desc_raw:
-            solo_desc = desc_raw.replace("Alquiler:", "").split("(")[0].strip()
-            if solo_desc:
-                st.markdown(f'<div class="data-line">📦 <b>Alquiler:</b> {solo_desc}</div>', unsafe_allow_html=True)
+    st.markdown("<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True)
 
-        st.markdown(f'<div class="data-line">💵 <b>Monto Total:</b> S/ {costo:.0f} | 💳 <b>Adelanto:</b> S/ {adelanto:.0f} | 💰 <b style="color: #D90429;">Pendiente: S/ {pendiente:.0f}</b></div>', unsafe_allow_html=True)
-
-        # Resumen de Personal Asignado
-        st.markdown(f'<div class="{header_class}">👥 Personal Asignado</div>', unsafe_allow_html=True)
-
-        animador = p_data.get("animador", "")
-        dalinas = p_data.get("dalinas", "")
-        dj = p_data.get("dj", "")
-        staff = p_data.get("staff", "")
-        detalles = p_data.get("detalles", "")
-
-        tiene_personal = bool((animador and animador != "Ninguno") or dalinas or dj or staff)
-
-        if tiene_personal:
-            st.markdown(f'<div class="data-line">🎤 <b>Animadora:</b> {animador if animador else "No asignada"}</div>', unsafe_allow_html=True)
-            st.markdown(f'<div class="data-line">💃 <b>Dalinas ({p_data.get("num_dalinas", 0)}):</b> {dalinas if dalinas else "Ninguna"}</div>', unsafe_allow_html=True)
-            st.markdown(f'<div class="data-line">🎧 <b>DJ:</b> {dj if dj else "No asignado"}</div>', unsafe_allow_html=True)
-            st.markdown(f'<div class="data-line">🛠️ <b>Staff:</b> {staff if staff else "No asignado"}</div>', unsafe_allow_html=True)
-            if detalles:
-                st.markdown(f'<div class="data-line" style="margin-top:6px; font-style:italic;">📝 <b>Observaciones:</b> {detalles}</div>', unsafe_allow_html=True)
-        else:
-            st.markdown('<div class="data-line" style="color: #D90429;">⚠️ Aún no se ha asignado personal a este evento.</div>', unsafe_allow_html=True)
-
-        st.markdown("<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True)
-
-        st.markdown('<div class="btn-modificar-amarillo">', unsafe_allow_html=True)
-        if st.button("✏️ Modificar Personal", use_container_width=True, key=f"btn_mod_pers_{ev['id']}"):
-            modal_asignar_personal(ev)
-        st.markdown('</div>', unsafe_allow_html=True)
-
-    _mostrar_dialog()
+    st.markdown('<div class="btn-modificar-amarillo">', unsafe_allow_html=True)
+    if st.button("✏️ Modificar Personal", use_container_width=True, key=f"btn_mod_pers_{ev['id']}"):
+        st.session_state["ver_ficha_id"] = None
+        st.session_state["editar_personal_id"] = ev["id"]
+        st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
 
 # ==============================================================================
 # 6. TARJETAS DE EVENTO
@@ -545,23 +548,26 @@ def renderizar_lista_eventos(lista_eventos, key_prefix="evt"):
                         col_btn1, col_btn2 = st.columns(2)
                         with col_btn1:
                             if st.button("👤 Asignar Personal", key=f"{key_prefix}_btn_pers_{ev['id']}", use_container_width=True):
-                                modal_asignar_personal(ev)
+                                st.session_state["editar_personal_id"] = ev["id"]
+                                st.rerun()
                         with col_btn2:
                             if st.button("📋 Ver Ficha", key=f"{key_prefix}_btn_ver_{ev['id']}", use_container_width=True):
-                                modal_ver_ficha(ev)
+                                st.session_state["ver_ficha_id"] = ev["id"]
+                                st.rerun()
                     else:
                         if st.button("📋 Ver Ficha", key=f"{key_prefix}_btn_ver_{ev['id']}", use_container_width=True):
-                            modal_ver_ficha(ev)
+                            st.session_state["ver_ficha_id"] = ev["id"]
+                            st.rerun()
 
 # ==============================================================================
-# 7. CABECERA ALINEADA EN UNA FILA (LOGO + TÍTULO)
+# 7. CABECERA ALINEADA EN UNA FILA (LOGO + TÍTULO "MADAI")
 # ==============================================================================
 html_logo = f'<img src="data:image/jpeg;base64,{logo_b64}" class="logo-inline">' if logo_b64 else ''
 
 st.markdown(f"""
     <div class="header-container">
         {html_logo}
-        <div class="title-inline">AGENDA VIRTUAL MADAI</div>
+        <div class="title-inline">MADAI</div>
     </div>
 """, unsafe_allow_html=True)
 
@@ -711,3 +717,18 @@ elif tab_seleccionada == "REGISTRO":
             
             st.session_state["tab_activa"] = tabs[0]
             st.rerun()
+
+# ==============================================================================
+# 9. DISPARADOR DE MODALES AL FINAL DE LA EJECUCIÓN
+# ==============================================================================
+if st.session_state["ver_ficha_id"] is not None:
+    eventos_todos = obtener_eventos()
+    ev_sel = next((e for e in eventos_todos if e["id"] == st.session_state["ver_ficha_id"]), None)
+    if ev_sel:
+        dialog_ver_ficha(ev_sel)
+
+if st.session_state["editar_personal_id"] is not None:
+    eventos_todos = obtener_eventos()
+    ev_sel = next((e for e in eventos_todos if e["id"] == st.session_state["editar_personal_id"]), None)
+    if ev_sel:
+        dialog_asignar_personal(ev_sel)
