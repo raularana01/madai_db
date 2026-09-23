@@ -85,7 +85,7 @@ st.markdown("""
     .card-madai {
         background-color: #E0B0FF !important;
         border-radius: 8px 8px 0px 0px !important;
-        padding: 12px 14px 8px 14px;
+        padding: 12px 14px 10px 14px;
         margin-bottom: 0px !important;
         color: #111111 !important;
         box-shadow: 0px 2px 4px rgba(0,0,0,0.08);
@@ -95,7 +95,7 @@ st.markdown("""
     .card-risuena {
         background-color: #B7E4C7 !important;
         border-radius: 8px 8px 0px 0px !important;
-        padding: 12px 14px 8px 14px;
+        padding: 12px 14px 10px 14px;
         margin-bottom: 0px !important;
         color: #111111 !important;
         box-shadow: 0px 2px 4px rgba(0,0,0,0.08);
@@ -105,40 +105,39 @@ st.markdown("""
     .card-alquiler {
         background-color: #A2D2FF !important;
         border-radius: 8px 8px 0px 0px !important;
-        padding: 12px 14px 8px 14px;
+        padding: 12px 14px 10px 14px;
         margin-bottom: 0px !important;
         color: #111111 !important;
         box-shadow: 0px 2px 4px rgba(0,0,0,0.08);
         border-left: 6px solid #023E8A;
     }
 
-    /* --- FIX PARABOTONES PEGADOS DEFINITIVO --- */
-    /* Anula márgenes superiores e inferiores entre elementos de Streamlit dentro del bloque de tarjeta */
+    /* Eliminar espacios verticales internos de Streamlit en la columna de la tarjeta */
     div[data-testid="stColumn"] > div {
         gap: 0px !important;
     }
 
-    /* Estilo de los botones pegados justo debajo de la tarjeta */
+    /* Estilo para pegar los botones directamente debajo de la tarjeta */
     .btn-card-attached button {
-        margin-top: -2px !important;
+        margin-top: -6px !important;
         border-top-left-radius: 0px !important;
         border-top-right-radius: 0px !important;
         border-bottom-left-radius: 8px !important;
         border-bottom-right-radius: 8px !important;
         border: 1px solid rgba(0, 0, 0, 0.15) !important;
-        border-top: 1px solid rgba(0, 0, 0, 0.1) !important;
+        border-top: 1px solid rgba(0, 0, 0, 0.08) !important;
         background-color: #FFFFFF !important;
         color: #111111 !important;
         font-weight: 600 !important;
-        font-size: 12px !important;
+        font-size: 13px !important;
         padding: 4px 6px !important;
-        min-height: 32px !important;
-        height: 32px !important;
+        min-height: 36px !important;
+        height: 36px !important;
         transition: all 0.2s ease-in-out;
     }
 
     .btn-card-attached button:hover {
-        background-color: #F0F0F0 !important;
+        background-color: #F5F5F5 !important;
         color: #000000 !important;
         border-color: rgba(0, 0, 0, 0.3) !important;
     }
@@ -154,8 +153,8 @@ st.markdown("""
     .data-line {
         font-size: 13px;
         color: #111111 !important;
-        margin-bottom: 8px !important;
-        line-height: 1.6 !important;
+        margin-bottom: 6px !important;
+        line-height: 1.5 !important;
     }
 
     .data-line b, .data-line span {
@@ -484,7 +483,7 @@ st.session_state["tab_activa"] = opcion_menu
 st.markdown("<hr style='margin-top: 5px; margin-bottom: 15px;'/>", unsafe_allow_html=True)
 
 # ------------------------------------------------------------------------------
-# PESTAÑA 1: LISTA DE EVENTOS (OPCIÓN A CORREGIDA)
+# PESTAÑA 1: LISTA DE EVENTOS (BOTONES ALINEADOS Y PEGADOS + SEPARACIÓN)
 # ------------------------------------------------------------------------------
 if st.session_state["tab_activa"] == "📋 Lista de Eventos":
     eventos = obtener_eventos()
@@ -528,7 +527,7 @@ if st.session_state["tab_activa"] == "📋 Lista de Eventos":
                 es_alquiler_local = "LOCAL" in marca_str or "ALQUILER" in marca_str
                 contrato_show = "SHOW" in str(ev.get("descripcion", "")).upper() or "SHOW" in tipo_str.upper()
 
-                # TARJETA CON SU COLOR PASTEL INDEPENDIENTE
+                # 1. CONTENIDO SUPERIOR: TARJETA
                 st.markdown(f"""
                     <div class="{card_class}">
                         <div class="event-title">🎉 {ev.get("evento", "Sin Nombre")} {tipo_str}</div>
@@ -539,9 +538,10 @@ if st.session_state["tab_activa"] == "📋 Lista de Eventos":
                     </div>
                 """, unsafe_allow_html=True)
 
-                # BOTONES COMPACTOS PEGADOS A LA TARJETA
+                # 2. BOTONES EN LA MISMA FILA (Lado a lado y pegados a la tarjeta)
                 if not (es_alquiler_local and not contrato_show):
                     if not tiene_personal:
+                        # Sin personal: 2 botones en una sola fila (50% cada uno)
                         col_b1, col_b2 = st.columns(2)
                         with col_b1:
                             st.markdown('<div class="btn-card-attached">', unsafe_allow_html=True)
@@ -554,12 +554,14 @@ if st.session_state["tab_activa"] == "📋 Lista de Eventos":
                                 modal_ver_ficha(ev)
                             st.markdown('</div>', unsafe_allow_html=True)
                     else:
+                        # Con personal: 1 solo botón
                         st.markdown('<div class="btn-card-attached">', unsafe_allow_html=True)
                         if st.button("📋 Ver Ficha", key=f"btn_ver_{ev['id']}", use_container_width=True):
                             modal_ver_ficha(ev)
                         st.markdown('</div>', unsafe_allow_html=True)
 
-                st.markdown("<div style='margin-bottom: 16px;'></div>", unsafe_allow_html=True)
+                # 3. SEPARACIÓN CLARA PARA LA SIGUIENTE TARJETA
+                st.markdown("<div style='margin-bottom: 28px;'></div>", unsafe_allow_html=True)
 
 
 # ------------------------------------------------------------------------------
