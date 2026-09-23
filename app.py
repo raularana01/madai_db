@@ -196,7 +196,8 @@ def modal_ver_ficha(evento):
         costo = float(ev.get('costo_total', 0) or 0)
         adelanto = float(ev.get('monto_adelanto', 0) or 0)
         pendiente = costo - adelanto
-        tipo_str = f"({ev.get('tipo', 'Show')})" if ev.get('tipo') else ""
+        tipo_raw = str(ev.get('tipo', 'Show'))
+        tipo_str = f"({tipo_raw})" if tipo_raw else ""
 
         marca = str(ev.get("marca", "madai")).lower()
         if "local" in marca:
@@ -222,14 +223,20 @@ def modal_ver_ficha(evento):
 
         st.markdown(f'<div class="{header_class}">🏷️ {nombre_marca_header} — 📅 {fecha_fmt}</div>', unsafe_allow_html=True)
         st.markdown(f'<div class="event-title">🎉 {ev.get("evento", "Sin Nombre")} {tipo_str}</div>', unsafe_allow_html=True)
-        st.markdown(f'<div class="data-line">⏰ <b>Horario:</b> {rango_horas} (Citación: {ev.get("hora_citacion", "04:00 PM")})</div>', unsafe_allow_html=True)
+        
+        # Formato de hora en la ficha modal según tipo
+        if tipo_raw.strip().lower() == "deco":
+            st.markdown(f'<div class="data-line">⏰ <b>Hora:</b> {ev.get("hora_contrato", ev.get("hora_citacion", "04:30 PM"))}</div>', unsafe_allow_html=True)
+        else:
+            st.markdown(f'<div class="data-line">⏰ <b>Horario:</b> {rango_horas} (Citación: {ev.get("hora_citacion", "04:00 PM")})</div>', unsafe_allow_html=True)
+            
         st.markdown(f'<div class="data-line">👤 <b>Cliente:</b> {ev.get("cliente", "N/A")} | 📱 <b>Tel:</b> {ev.get("telefono", "N/A")}</div>', unsafe_allow_html=True)
         
         if "local" not in marca:
             st.markdown(f'<div class="data-line">📍 <b>Lugar:</b> {ev.get("direccion", "N/A")}</div>', unsafe_allow_html=True)
             
         desc_raw = str(ev.get("descripcion", "") or "").strip()
-        contrato_show = "SHOW" in desc_raw.upper() or "SHOW" in str(ev.get("tipo", "")).upper()
+        contrato_show = "SHOW" in desc_raw.upper() or "SHOW" in tipo_raw.upper()
 
         if "local" in marca and contrato_show:
             st.markdown(f'<div class="data-line">🎭 <b>Show:</b> {rango_horas}</div>', unsafe_allow_html=True)
@@ -330,6 +337,16 @@ def renderizar_lista_eventos(lista_eventos, key_prefix="evt"):
             contrato_show = "SHOW" in desc_raw.upper() or "SHOW" in tipo_str.upper()
 
             # ------------------------------------------------------------------
+            # FORMATO DE HORA SÓLO PARA DECO
+            # ------------------------------------------------------------------
+            es_solo_deco = tipo_str.strip().lower() == "deco"
+            
+            if es_solo_deco:
+                linea_hora_html = f'<div class="data-line">⏰ <b>Hora:</b> {ev.get("hora_contrato", ev.get("hora_citacion", "04:30 PM"))}</div>'
+            else:
+                linea_hora_html = f'<div class="data-line">⏰ <b>Hora:</b> {ev.get("hora_contrato", "04:30 PM")} | <b>Citación:</b> {ev.get("hora_citacion", "04:00 PM")}</div>'
+
+            # ------------------------------------------------------------------
             # CONSTRUCCIÓN DE LÍNEAS OPCIONALES DE HTML
             # ------------------------------------------------------------------
             # 1. Dirección: Omitida si es Local
@@ -354,7 +371,7 @@ def renderizar_lista_eventos(lista_eventos, key_prefix="evt"):
                 f'<div class="badge-marca {badge_class}">{nombre_marca_tag}</div>'
                 f'<div class="event-title">🎉 {ev.get("evento", "Sin Nombre")} - ({tipo_str})</div>'
                 f'<div class="data-line">📅 <b>Fecha:</b> {formatear_fecha_larga(ev.get("fecha", ""))}</div>'
-                f'<div class="data-line">⏰ <b>Hora:</b> {ev.get("hora_contrato", "04:30 PM")} | <b>Citación:</b> {ev.get("hora_citacion", "04:00 PM")}</div>'
+                f'{linea_hora_html}'
                 f'<div class="data-line">👤 <b>Cliente:</b> {ev.get("cliente", "N/A")} | 📱 <b>Tel:</b> {ev.get("telefono", "N/A")}</div>'
                 f'{linea_direccion_html}'
                 f'{linea_detalle_html}'
