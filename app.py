@@ -1,6 +1,8 @@
 import streamlit as st
 from datetime import date, datetime, timedelta
 from supabase import create_client, Client
+import base64
+import os
 
 # ==============================================================================
 # 1. CONFIGURACIÓN DE PÁGINA Y CONEXIÓN SUPABASE
@@ -20,20 +22,67 @@ def init_supabase() -> Client:
 supabase = init_supabase()
 
 # ==============================================================================
-# 2. ESTILOS CSS PERSONALIZADOS
+# 2. CARGA DE FONDO E IMÁGENES
 # ==============================================================================
-st.markdown("""
+def obtener_base64_de_archivo(ruta_archivo):
+    if os.path.exists(ruta_archivo):
+        with open(ruta_archivo, "rb") as f:
+            data = f.read()
+        return base64.b64encode(data).decode()
+    return None
+
+# Aplicar fondo.jpeg si existe
+fondo_b64 = obtener_base64_de_archivo("fondo.jpeg")
+css_fondo = ""
+if fondo_b64:
+    css_fondo = f"""
+    .stApp {{
+        background-image: linear-gradient(rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0.85)), url("data:image/jpeg;base64,{fondo_b64}");
+        background-size: cover;
+        background-position: center;
+        background-attachment: fixed;
+    }}
+    """
+
+# ==============================================================================
+# 3. ESTILOS CSS PERSONALIZADOS INFANTILES Y ESTRUCTURA
+# ==============================================================================
+st.markdown(f"""
     <style>
+    {css_fondo}
+
+    /* Estilo del Título Infantil */
+    .title-madai {{
+        font-family: 'Comic Sans MS', 'Chalkboard SE', 'Quicksand', sans-serif;
+        font-size: 2.6rem;
+        font-weight: 900;
+        background: linear-gradient(45deg, #7B2CBF, #FF007F, #FF9F1C, #2B9348);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin: 0;
+        padding: 0;
+        line-height: 1.1;
+    }}
+    
+    .subtitle-madai {{
+        font-family: 'Quicksand', sans-serif;
+        font-size: 1.05rem;
+        font-weight: 600;
+        color: #5A189A;
+        margin-top: 4px;
+        margin-bottom: 0px;
+    }}
+
     /* Estilos generales de tarjetas */
-    .card-madai, .card-risuena, .card-alquiler {
+    .card-madai, .card-risuena, .card-alquiler {{
         padding: 0 0 12px 0;
         border-radius: 8px;
         margin-bottom: 12px;
         position: relative;
-    }
+    }}
 
     /* Badge de marca */
-    .badge-marca {
+    .badge-marca {{
         position: absolute;
         top: 8px;
         right: 12px;
@@ -45,32 +94,32 @@ st.markdown("""
         text-transform: uppercase;
         letter-spacing: 0.5px;
         box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-    }
-    .badge-madai { background-color: #7B2CBF; }
-    .badge-risuena { background-color: #2B9348; }
-    .badge-local { background-color: #023E8A; }
+    }}
+    .badge-madai {{ background-color: #7B2CBF; }}
+    .badge-risuena {{ background-color: #2B9348; }}
+    .badge-local {{ background-color: #023E8A; }}
 
     /* Encabezados */
-    .header-madai { background-color: #7B2CBF; color: white; padding: 6px 12px; font-weight: bold; font-size: 0.95rem; border-radius: 4px 4px 0 0; }
-    .header-risuena { background-color: #2B9348; color: white; padding: 6px 12px; font-weight: bold; font-size: 0.95rem; border-radius: 4px 4px 0 0; }
-    .header-alquiler { background-color: #023E8A; color: white; padding: 6px 12px; font-weight: bold; font-size: 0.95rem; border-radius: 4px 4px 0 0; }
+    .header-madai {{ background-color: #7B2CBF; color: white; padding: 6px 12px; font-weight: bold; font-size: 0.95rem; border-radius: 4px 4px 0 0; }}
+    .header-risuena {{ background-color: #2B9348; color: white; padding: 6px 12px; font-weight: bold; font-size: 0.95rem; border-radius: 4px 4px 0 0; }}
+    .header-alquiler {{ background-color: #023E8A; color: white; padding: 6px 12px; font-weight: bold; font-size: 0.95rem; border-radius: 4px 4px 0 0; }}
 
     /* Formato de texto interno de tarjeta */
-    .event-title {
+    .event-title {{
         font-size: 1.15rem;
         font-weight: bold;
         color: #111;
         padding: 10px 80px 4px 12px;
-    }
-    .data-line {
+    }}
+    .data-line {{
         font-size: 0.95rem;
         color: #222;
         padding: 2px 12px;
-    }
+    }}
 
     /* Botón GUARDAR EVENTO en Verde Llamativo */
     div[data-testid="stForm"] button[kind="primaryFormSubmit"],
-    div[data-testid="stForm"] button {
+    div[data-testid="stForm"] button {{
         background-color: #28a745 !important;
         background-image: none !important;
         color: white !important;
@@ -80,24 +129,24 @@ st.markdown("""
         padding: 10px 0 !important;
         border-radius: 8px !important;
         box-shadow: 0 4px 6px rgba(0,0,0,0.15) !important;
-    }
-    div[data-testid="stForm"] button:hover {
+    }}
+    div[data-testid="stForm"] button:hover {{
         background-color: #218838 !important;
         color: white !important;
-    }
+    }}
 
     /* Botón amarillo personalizado */
-    .btn-modificar-amarillo button {
+    .btn-modificar-amarillo button {{
         background-color: #FFC107 !important;
         color: #000 !important;
         font-weight: bold !important;
         border: none !important;
-    }
+    }}
     </style>
 """, unsafe_allow_html=True)
 
 # ==============================================================================
-# 3. FUNCIONES AUXILIARES Y FORMATO
+# 4. FUNCIONES AUXILIARES Y FORMATO
 # ==============================================================================
 def formatear_fecha_larga(fecha_str):
     if not fecha_str:
@@ -131,7 +180,7 @@ def obtener_eventos():
     return res.data if res.data else []
 
 # ==============================================================================
-# 4. MODALES
+# 5. MODALES
 # ==============================================================================
 def modal_asignar_personal(evento):
     e_id = int(evento["id"])
@@ -224,7 +273,6 @@ def modal_ver_ficha(evento):
         st.markdown(f'<div class="{header_class}">🏷️ {nombre_marca_header} — 📅 {fecha_fmt}</div>', unsafe_allow_html=True)
         st.markdown(f'<div class="event-title">🎉 {ev.get("evento", "Sin Nombre")} {tipo_str}</div>', unsafe_allow_html=True)
         
-        # Formato de hora en la ficha modal según tipo
         if tipo_raw.strip().lower() == "deco":
             st.markdown(f'<div class="data-line">⏰ <b>Hora:</b> {ev.get("hora_contrato", ev.get("hora_citacion", "04:30 PM"))}</div>', unsafe_allow_html=True)
         else:
@@ -280,7 +328,7 @@ def modal_ver_ficha(evento):
     _mostrar_dialog()
 
 # ==============================================================================
-# 5. TARJETAS DE EVENTO
+# 6. TARJETAS DE EVENTO
 # ==============================================================================
 def renderizar_lista_eventos(lista_eventos, key_prefix="evt"):
     if not lista_eventos:
@@ -336,9 +384,6 @@ def renderizar_lista_eventos(lista_eventos, key_prefix="evt"):
             desc_raw = str(ev.get("descripcion", "") or "").strip()
             contrato_show = "SHOW" in desc_raw.upper() or "SHOW" in tipo_str.upper()
 
-            # ------------------------------------------------------------------
-            # FORMATO DE HORA SÓLO PARA DECO
-            # ------------------------------------------------------------------
             es_solo_deco = tipo_str.strip().lower() == "deco"
             
             if es_solo_deco:
@@ -346,15 +391,10 @@ def renderizar_lista_eventos(lista_eventos, key_prefix="evt"):
             else:
                 linea_hora_html = f'<div class="data-line">⏰ <b>Hora:</b> {ev.get("hora_contrato", "04:30 PM")} | <b>Citación:</b> {ev.get("hora_citacion", "04:00 PM")}</div>'
 
-            # ------------------------------------------------------------------
-            # CONSTRUCCIÓN DE LÍNEAS OPCIONALES DE HTML
-            # ------------------------------------------------------------------
-            # 1. Dirección: Omitida si es Local
             linea_direccion_html = ""
             if not es_local:
                 linea_direccion_html = f'<div class="data-line">📍 <b>Lugar:</b> {ev.get("direccion", "N/A")}</div>'
 
-            # 2. Lógica para Local + Show vs. Alquiler General
             linea_detalle_html = ""
             if es_local and contrato_show:
                 hora_inicio = ev.get("hora_contrato", "04:30 PM")
@@ -365,7 +405,6 @@ def renderizar_lista_eventos(lista_eventos, key_prefix="evt"):
                 if solo_desc:
                     linea_detalle_html = f'<div class="data-line">📦 <b>Alquiler:</b> {solo_desc}</div>'
 
-            # Construcción en bloque unificado para evitar fallos de renderizado Markdown
             html_tarjeta = (
                 f'<div class="{card_class}">'
                 f'<div class="badge-marca {badge_class}">{nombre_marca_tag}</div>'
@@ -424,10 +463,23 @@ def renderizar_lista_eventos(lista_eventos, key_prefix="evt"):
                             modal_ver_ficha(ev)
 
 # ==============================================================================
-# 6. INTERFAZ PRINCIPAL Y NAVEGACIÓN
+# 7. CABECERA PRINCIPAL (LOGO + TÍTULO COLORIDO)
 # ==============================================================================
-st.title("📌 Agenda Virtual MADAI")
+col_logo, col_titulo = st.columns([1, 5], vertical_alignment="center")
 
+with col_logo:
+    if os.path.exists("logo.jpeg"):
+        st.image("logo.jpeg", width=95)
+
+with col_titulo:
+    st.markdown('<div class="title-madai">AGENDA VIRTUAL MADAI</div>', unsafe_allow_html=True)
+    st.markdown('<div class="subtitle-madai">🎈 Control & Gestión de Eventos Infantiles 🎈</div>', unsafe_allow_html=True)
+
+st.markdown("<br>", unsafe_allow_html=True)
+
+# ==============================================================================
+# 8. INTERFAZ PRINCIPAL Y NAVEGACIÓN
+# ==============================================================================
 tabs = ["📅 Eventos del Día", "📆 Próximos Eventos", "➕ Registrar Evento"]
 
 if "tab_activa" not in st.session_state:
