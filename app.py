@@ -433,7 +433,7 @@ elif st.session_state["tab_activa"] == "📆 Próximos Eventos":
     renderizar_lista_eventos(eventos_filtrados, key_prefix="prox")
 
 # ------------------------------------------------------------------------------
-# PESTAÑA 3: REGISTRAR EVENTO (NUEVO ORDEN Y LÓGICA DINÁMICA)
+# PESTAÑA 3: REGISTRAR EVENTO (SIN SEPARADORES NI ENCABEZADOS DE SECCIÓN)
 # ------------------------------------------------------------------------------
 elif st.session_state["tab_activa"] == "➕ Registrar Evento":
     st.subheader("➕ Registrar Nuevo Evento")
@@ -451,7 +451,6 @@ elif st.session_state["tab_activa"] == "➕ Registrar Evento":
             fecha_e = st.date_input("7. Fecha", value=date.today())
         
         with col2:
-            st.markdown("**Horarios:**")
             if tipo_e in ["Show", "Show + Deco"]:
                 hora_cit = st.text_input("Hora de Invitación / Citación", value="04:00 PM")
                 hora_c = st.text_input("Hora de Contrato", value="04:30 PM")
@@ -459,9 +458,6 @@ elif st.session_state["tab_activa"] == "➕ Registrar Evento":
                 hora_c = st.text_input("Hora del Evento", value="04:30 PM")
                 hora_cit = hora_c
 
-            st.markdown("---")
-            st.markdown("**Montos y Pagos:**")
-            
             if tipo_e == "Show + Deco":
                 col_p1, col_p2 = st.columns(2)
                 with col_p1:
@@ -477,7 +473,6 @@ elif st.session_state["tab_activa"] == "➕ Registrar Evento":
             pendiente_calc = max(0.0, costo_t - monto_a)
             st.markdown(f"🔴 **Pendiente de Pago:** <b style='color: #D90429; font-size: 1.1rem;'>S/ {pendiente_calc:.2f}</b>", unsafe_allow_html=True)
 
-            st.markdown("---")
             agregar_alquiler = st.checkbox("➕ Agregar Alquiler")
             desc_alquiler = ""
             monto_alquiler = 0.0
