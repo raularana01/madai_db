@@ -228,9 +228,11 @@ def modal_ver_ficha(evento):
         if "local" not in marca:
             st.markdown(f'<div class="data-line">📍 <b>Lugar:</b> {ev.get("direccion", "N/A")}</div>', unsafe_allow_html=True)
             
-        desc_raw = str(ev.get("descripcion", ""))
-        if "Alquiler:" in desc_raw:
-            st.markdown(f'<div class="data-line">📦 <b>Alquiler:</b> {desc_raw}</div>', unsafe_allow_html=True)
+        desc_raw = str(ev.get("descripcion", "") or "").strip()
+        if desc_raw:
+            solo_desc = desc_raw.replace("Alquiler:", "").split("(")[0].strip()
+            if solo_desc:
+                st.markdown(f'<div class="data-line">📦 <b>Alquiler:</b> {solo_desc}</div>', unsafe_allow_html=True)
 
         st.markdown(f'<div class="data-line">💵 <b>Adelanto:</b> S/ {adelanto:.0f} | 💰 <b style="color: #D90429;">Pendiente: S/ {pendiente:.0f}</b></div>', unsafe_allow_html=True)
 
@@ -265,7 +267,7 @@ def modal_ver_ficha(evento):
     _mostrar_dialog()
 
 # ==============================================================================
-# 5. TARJETAS DE EVENTO (CORREGIDO EL RENDERIZADO HTML)
+# 5. TARJETAS DE EVENTO
 # ==============================================================================
 def renderizar_lista_eventos(lista_eventos, key_prefix="evt"):
     if not lista_eventos:
@@ -281,7 +283,6 @@ def renderizar_lista_eventos(lista_eventos, key_prefix="evt"):
             tipo_str = str(ev.get('tipo', 'Show'))
             
             marca_raw = str(ev.get('marca', 'madai')).lower()
-            
             card_border = "#28A745"
             
             if "local" in marca_raw:
@@ -319,30 +320,35 @@ def renderizar_lista_eventos(lista_eventos, key_prefix="evt"):
             es_local = "local" in marca_raw
             contrato_show = "SHOW" in str(ev.get("descripcion", "")).upper() or "SHOW" in tipo_str.upper()
 
-            # Construcción segura de las líneas opcionales
+            # ------------------------------------------------------------------
+            # CONSTRUCCIÓN DE LÍNEAS OPCIONALES DE HTML
+            # ------------------------------------------------------------------
+            # 1. Dirección: Omitida si es Local
             linea_direccion_html = ""
             if not es_local:
                 linea_direccion_html = f'<div class="data-line">📍 <b>Lugar:</b> {ev.get("direccion", "N/A")}</div>'
 
-            desc_raw = str(ev.get("descripcion", ""))
+            # 2. Descripción de Alquiler: Solo muestra la descripción sin precio extra
+            desc_raw = str(ev.get("descripcion", "") or "").strip()
             linea_alquiler_html = ""
             if desc_raw:
                 solo_desc = desc_raw.replace("Alquiler:", "").split("(")[0].strip()
-                linea_alquiler_html = f'<div class="data-line">📦 <b>Alquiler:</b> {solo_desc}</div>'
+                if solo_desc:
+                    linea_alquiler_html = f'<div class="data-line">📦 <b>Alquiler:</b> {solo_desc}</div>'
 
-            # Construcción de la tarjeta en una sola cadena limpia
-            html_tarjeta = f"""
-                <div class="{card_class}">
-                    <div class="badge-marca {badge_class}">{nombre_marca_tag}</div>
-                    <div class="event-title">🎉 {ev.get('evento', 'Sin Nombre')} - ({tipo_str})</div>
-                    <div class="data-line">📅 <b>Fecha:</b> {formatear_fecha_larga(ev.get('fecha', ''))}</div>
-                    <div class="data-line">⏰ <b>Hora:</b> {ev.get('hora_contrato', '04:30 PM')} | <b>Citación:</b> {ev.get('hora_citacion', '04:00 PM')}</div>
-                    <div class="data-line">👤 <b>Cliente:</b> {ev.get('cliente', 'N/A')} | 📱 <b>Tel:</b> {ev.get('telefono', 'N/A')}</div>
-                    {linea_direccion_html}
-                    {linea_alquiler_html}
-                    <div class="data-line">💰 <b>Total:</b> S/ {costo:.0f} | <b style="color: #D90429;">Pendiente: S/ {pendiente:.0f}</b></div>
-                </div>
-            """
+            # Construcción en bloque unificado para evitar fallos de renderizado Markdown
+            html_tarjeta = (
+                f'<div class="{card_class}">'
+                f'<div class="badge-marca {badge_class}">{nombre_marca_tag}</div>'
+                f'<div class="event-title">🎉 {ev.get("evento", "Sin Nombre")} - ({tipo_str})</div>'
+                f'<div class="data-line">📅 <b>Fecha:</b> {formatear_fecha_larga(ev.get("fecha", ""))}</div>'
+                f'<div class="data-line">⏰ <b>Hora:</b> {ev.get("hora_contrato", "04:30 PM")} | <b>Citación:</b> {ev.get("hora_citacion", "04:00 PM")}</div>'
+                f'<div class="data-line">👤 <b>Cliente:</b> {ev.get("cliente", "N/A")} | 📱 <b>Tel:</b> {ev.get("telefono", "N/A")}</div>'
+                f'{linea_direccion_html}'
+                f'{linea_alquiler_html}'
+                f'<div class="data-line">💰 <b>Total:</b> S/ {costo:.0f} | <b style="color: #D90429;">Pendiente: S/ {pendiente:.0f}</b></div>'
+                f'</div>'
+            )
 
             st.markdown(f"""
                 <style>
@@ -463,7 +469,7 @@ elif tab_seleccionada == "➕ Registrar Evento":
     with col1:
         marca = st.selectbox("**Marca**", ["madai", "risueña", "local"])
         evento_nom = st.text_input("**Nombre del Evento**")
-        tipo_e = st.selectbox("**Tipo de Evento**", ["Show", "Show + Deco", "Deco"])
+        tipo_e = st.selectbox("**Tipo de Evento**", ["Show", "Show + Deco", "Deco", "Alquiler de Local"])
         cliente = st.text_input("**Cliente**")
         telefono = st.text_input("**Número (Teléfono)**")
         direccion = st.text_input("**Dirección**")
