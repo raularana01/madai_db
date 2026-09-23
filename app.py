@@ -32,7 +32,7 @@ st.markdown("""
         position: relative;
     }
 
-    /* Badge de marca pequeño en la esquina superior derecha */
+    /* Badge de marca */
     .badge-marca {
         position: absolute;
         top: 8px;
@@ -50,7 +50,7 @@ st.markdown("""
     .badge-risuena { background-color: #2B9348; }
     .badge-local { background-color: #023E8A; }
 
-    /* Encabezados generales */
+    /* Encabezados */
     .header-madai { background-color: #7B2CBF; color: white; padding: 6px 12px; font-weight: bold; font-size: 0.95rem; border-radius: 4px 4px 0 0; }
     .header-risuena { background-color: #2B9348; color: white; padding: 6px 12px; font-weight: bold; font-size: 0.95rem; border-radius: 4px 4px 0 0; }
     .header-alquiler { background-color: #023E8A; color: white; padding: 6px 12px; font-weight: bold; font-size: 0.95rem; border-radius: 4px 4px 0 0; }
@@ -131,7 +131,7 @@ def obtener_eventos():
     return res.data if res.data else []
 
 # ==============================================================================
-# 4. MODAL ASIGNAR / EDITAR PERSONAL
+# 4. MODALES
 # ==============================================================================
 def modal_asignar_personal(evento):
     e_id = int(evento["id"])
@@ -173,9 +173,6 @@ def modal_asignar_personal(evento):
 
     _mostrar_dialog()
 
-# ==============================================================================
-# 5. MODAL FICHA DETALLADA
-# ==============================================================================
 def modal_ver_ficha(evento):
     e_id = int(evento["id"])
     nombre_evento = evento.get("evento", "Sin Nombre")
@@ -261,7 +258,7 @@ def modal_ver_ficha(evento):
     _mostrar_dialog()
 
 # ==============================================================================
-# 6. FUNCIÓN COMPONENTES TARJETA (REUTILIZABLE)
+# 5. TARJETAS DE EVENTO
 # ==============================================================================
 def renderizar_lista_eventos(lista_eventos, key_prefix="evt"):
     if not lista_eventos:
@@ -371,7 +368,7 @@ def renderizar_lista_eventos(lista_eventos, key_prefix="evt"):
                             modal_ver_ficha(ev)
 
 # ==============================================================================
-# 7. INTERFAZ PRINCIPAL CON PESTAÑAS (TABS)
+# 6. INTERFAZ PRINCIPAL
 # ==============================================================================
 st.title("📌 Agenda Virtual MADAI")
 
@@ -390,11 +387,9 @@ st.markdown("---")
 # ------------------------------------------------------------------------------
 if st.session_state["tab_activa"] == "📅 Eventos del Día":
     st.subheader("📅 Eventos del Día de Hoy")
-    
     hoy_str = str(date.today())
     eventos_todos = obtener_eventos()
     eventos_hoy = [e for e in eventos_todos if str(e.get("fecha")) == hoy_str]
-    
     renderizar_lista_eventos(eventos_hoy, key_prefix="hoy")
 
 # ------------------------------------------------------------------------------
@@ -402,17 +397,12 @@ if st.session_state["tab_activa"] == "📅 Eventos del Día":
 # ------------------------------------------------------------------------------
 elif st.session_state["tab_activa"] == "📆 Próximos Eventos":
     st.subheader("📆 Próximos Eventos")
-    
     hoy = date.today()
     limite_3_dias = hoy + timedelta(days=3)
     
     col_f1, col_f2 = st.columns([1, 2])
     with col_f1:
-        fecha_filtrada = st.date_input(
-            "🔎 **Filtrar por fecha específica:**",
-            value=None,
-            help="Selecciona una fecha para ver solo sus eventos, o borra el campo para ver los próximos 3 días."
-        )
+        fecha_filtrada = st.date_input("🔎 **Filtrar por fecha específica:**", value=None)
 
     eventos_todos = obtener_eventos()
 
@@ -439,55 +429,54 @@ elif st.session_state["tab_activa"] == "📆 Próximos Eventos":
 # ------------------------------------------------------------------------------
 elif st.session_state["tab_activa"] == "➕ Registrar Evento":
     st.subheader("➕ Registrar Nuevo Evento")
+
+    col1, col2 = st.columns(2)
     
-    # Manejamos el estado del checkbox fuera del form para refresco inmediato
-    if "agregar_alquiler_state" not in st.session_state:
-        st.session_state["agregar_alquiler_state"] = False
+    with col1:
+        marca = st.selectbox("**Marca**", ["madai", "risueña", "local"])
+        evento_nom = st.text_input("**Nombre del Evento**")
+        tipo_e = st.selectbox("**Tipo de Evento**", ["Show", "Show + Deco", "Deco"])
+        cliente = st.text_input("**Cliente**")
+        telefono = st.text_input("**Número (Teléfono)**")
+        direccion = st.text_input("**Dirección**")
+        fecha_e = st.date_input("**Fecha**", value=date.today())
+    
+    with col2:
+        if tipo_e in ["Show", "Show + Deco"]:
+            hora_cit = st.text_input("**Hora de Invitación / Citación**", value="04:00 PM")
+            hora_c = st.text_input("**Hora de Contrato**", value="04:30 PM")
+        else:
+            hora_c = st.text_input("**Hora del Evento**", value="04:30 PM")
+            hora_cit = hora_c
 
-    with st.form("form_nuevo_evento", clear_on_submit=True):
-        col1, col2 = st.columns(2)
+        if tipo_e == "Show + Deco":
+            col_p1, col_p2 = st.columns(2)
+            with col_p1:
+                precio_show = st.number_input("**Precio Show (S/)**", min_value=0, step=10, value=250)
+            with col_p2:
+                precio_deco = st.number_input("**Precio Deco (S/)**", min_value=0, step=10, value=250)
+            costo_t = precio_show + precio_deco
+            st.info(f"💰 **Monto Total Show + Deco:** S/ {costo_t}")
+        else:
+            costo_t = st.number_input("**Monto Total (S/)**", min_value=0, step=10, value=250)
+
+        monto_a = st.number_input("**Monto de Adelanto (S/)**", min_value=0, step=10, value=100)
+        pendiente_calc = max(0, costo_t - monto_a)
+        st.markdown(f"🔴 **Pendiente de Pago:** <b style='color: #D90429; font-size: 1.1rem;'>S/ {pendiente_calc}</b>", unsafe_allow_html=True)
+
+        # CHECKBOX FUERA DEL FORMULARIO PARA REACTIVIDAD INMEDIATA
+        agregar_alquiler = st.checkbox("➕ **Agregar Alquiler**")
         
-        with col1:
-            marca = st.selectbox("**Marca**", ["madai", "risueña", "local"])
-            evento_nom = st.text_input("**Nombre del Evento**")
-            tipo_e = st.selectbox("**Tipo de Evento**", ["Show", "Show + Deco", "Deco"])
-            cliente = st.text_input("**Cliente**")
-            telefono = st.text_input("**Número (Teléfono)**")
-            direccion = st.text_input("**Dirección**")
-            fecha_e = st.date_input("**Fecha**", value=date.today())
+        desc_alquiler = ""
+        monto_alquiler = 0
         
-        with col2:
-            if tipo_e in ["Show", "Show + Deco"]:
-                hora_cit = st.text_input("**Hora de Invitación / Citación**", value="04:00 PM")
-                hora_c = st.text_input("**Hora de Contrato**", value="04:30 PM")
-            else:
-                hora_c = st.text_input("**Hora del Evento**", value="04:30 PM")
-                hora_cit = hora_c
+        # CAMPOS DINÁMICOS QUE APARECEN INMEDIATAMENTE AL MARCAR LA CASILLA
+        if agregar_alquiler:
+            desc_alquiler = st.text_input("**Descripción del Alquiler**")
+            monto_alquiler = st.number_input("**Monto del Alquiler (S/)**", min_value=0, step=10, value=250)
 
-            if tipo_e == "Show + Deco":
-                col_p1, col_p2 = st.columns(2)
-                with col_p1:
-                    precio_show = st.number_input("**Precio Show (S/)**", min_value=0, step=10, value=250)
-                with col_p2:
-                    precio_deco = st.number_input("**Precio Deco (S/)**", min_value=0, step=10, value=250)
-                costo_t = precio_show + precio_deco
-                st.info(f"💰 **Monto Total Show + Deco:** S/ {costo_t}")
-            else:
-                costo_t = st.number_input("**Monto Total (S/)**", min_value=0, step=10, value=250)
-
-            monto_a = st.number_input("**Monto de Adelanto (S/)**", min_value=0, step=10, value=100)
-            pendiente_calc = max(0, costo_t - monto_a)
-            st.markdown(f"🔴 **Pendiente de Pago:** <b style='color: #D90429; font-size: 1.1rem;'>S/ {pendiente_calc}</b>", unsafe_allow_html=True)
-
-            agregar_alquiler = st.checkbox("➕ **Agregar Alquiler**")
-            
-            desc_alquiler = ""
-            monto_alquiler = 0
-            
-            if agregar_alquiler:
-                desc_alquiler = st.text_input("**Descripción del Alquiler**")
-                monto_alquiler = st.number_input("**Monto del Alquiler (S/)**", min_value=0, step=10, value=250)
-
+    # FORMULARIO SÓLO PARA EL BOTÓN DE GUARDAR
+    with st.form("form_guardar_evento"):
         st.markdown("<br>", unsafe_allow_html=True)
         guardar_btn = st.form_submit_button("📌 GUARDAR EVENTO", use_container_width=True)
 
