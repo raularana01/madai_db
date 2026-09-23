@@ -366,7 +366,7 @@ def dialog_ver_ficha(evento):
     # Resumen del Evento
     st.markdown(f'<div class="event-title">🎉 <b>Nombre del Evento:</b> {ev.get("evento", "Sin Nombre")} {tipo_str}</div>', unsafe_allow_html=True)
     st.markdown(f'<div class="data-line">👤 <b>Cliente:</b> {ev.get("cliente", "N/A")} | 📱 <b>Tel:</b> {ev.get("telefono", "N/A")}</div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="data-line">⏰ <b>Hora de Contrato:</b> {ev.get("hora_contrato", "04:30 PM")} (Citación: {ev.get("hora_citacion", "04:00 PM")})</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="data-line">⏰ <b>Hora de Contrato:</b> {ev.get("hora_contrato", "04:30 PM")}</div>', unsafe_allow_html=True)
     
     if "local" not in marca:
         st.markdown(f'<div class="data-line">📍 <b>Dirección:</b> {ev.get("direccion", "N/A")}</div>', unsafe_allow_html=True)
@@ -377,6 +377,7 @@ def dialog_ver_ficha(evento):
 
     if "local" in marca and contrato_show:
         monto_show = costo - 600 if costo > 600 else 0
+        st.markdown(f'<div class="data-line">🎭 <b>Show:</b> {rango_horas}</div>', unsafe_allow_html=True)
         st.markdown(f'<div class="data-line">🏠 <b>Costo del Local:</b> S/ 600</div>', unsafe_allow_html=True)
         st.markdown(f'<div class="data-line">🎭 <b>Precio del Show:</b> S/ {monto_show:.0f}</div>', unsafe_allow_html=True)
     elif desc_raw:
@@ -387,34 +388,37 @@ def dialog_ver_ficha(evento):
     st.markdown(f'<div class="data-line">💵 <b>Monto Total:</b> S/ {costo:.0f} | 💳 <b>Adelanto:</b> S/ {adelanto:.0f} | 💰 <b style="color: #D90429;">Pendiente: S/ {pendiente:.0f}</b></div>', unsafe_allow_html=True)
 
     # Resumen de Personal Asignado
-    st.markdown(f'<div class="{header_class}">👥 Personal Asignado</div>', unsafe_allow_html=True)
-
-    animador = p_data.get("animador", "")
-    dalinas = p_data.get("dalinas", "")
-    dj = p_data.get("dj", "")
-    staff = p_data.get("staff", "")
-    detalles = p_data.get("detalles", "")
-
-    tiene_personal = bool((animador and animador != "Ninguno") or dalinas or dj or staff)
-
-    if tiene_personal:
-        st.markdown(f'<div class="data-line">🎤 <b>Animadora:</b> {animador if animador else "No asignada"}</div>', unsafe_allow_html=True)
-        st.markdown(f'<div class="data-line">💃 <b>Dalinas ({p_data.get("num_dalinas", 0)}):</b> {dalinas if dalinas else "Ninguna"}</div>', unsafe_allow_html=True)
-        st.markdown(f'<div class="data-line">🎧 <b>DJ:</b> {dj if dj else "No asignado"}</div>', unsafe_allow_html=True)
-        st.markdown(f'<div class="data-line">🛠️ <b>Staff:</b> {staff if staff else "No asignado"}</div>', unsafe_allow_html=True)
-        if detalles:
-            st.markdown(f'<div class="data-line" style="margin-top:6px; font-style:italic;">📝 <b>Observaciones:</b> {detalles}</div>', unsafe_allow_html=True)
+    if "local" in marca and not contrato_show:
+        pass
     else:
-        st.markdown('<div class="data-line" style="color: #D90429;">⚠️ Aún no se ha asignado personal a este evento.</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="{header_class}">👥 Personal Asignado</div>', unsafe_allow_html=True)
 
-    st.markdown("<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True)
+        animador = p_data.get("animador", "")
+        dalinas = p_data.get("dalinas", "")
+        dj = p_data.get("dj", "")
+        staff = p_data.get("staff", "")
+        detalles = p_data.get("detalles", "")
 
-    st.markdown('<div class="btn-modificar-amarillo">', unsafe_allow_html=True)
-    if st.button("✏️ Modificar Personal", use_container_width=True, key=f"btn_mod_pers_{ev['id']}"):
-        st.session_state["ver_ficha_id"] = None
-        st.session_state["editar_personal_id"] = ev["id"]
-        st.rerun()
-    st.markdown('</div>', unsafe_allow_html=True)
+        tiene_personal = bool((animador and animador != "Ninguno") or dalinas or dj or staff)
+
+        if tiene_personal:
+            st.markdown(f'<div class="data-line">🎤 <b>Animadora:</b> {animador if animador else "No asignada"}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="data-line">💃 <b>Dalinas ({p_data.get("num_dalinas", 0)}):</b> {dalinas if dalinas else "Ninguna"}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="data-line">🎧 <b>DJ:</b> {dj if dj else "No asignado"}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="data-line">🛠️ <b>Staff:</b> {staff if staff else "No asignado"}</div>', unsafe_allow_html=True)
+            if detalles:
+                st.markdown(f'<div class="data-line" style="margin-top:6px; font-style:italic;">📝 <b>Observaciones:</b> {detalles}</div>', unsafe_allow_html=True)
+        else:
+            st.markdown('<div class="data-line" style="color: #D90429;">⚠️ Aún no se ha asignado personal a este evento.</div>', unsafe_allow_html=True)
+
+        st.markdown("<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True)
+
+        st.markdown('<div class="btn-modificar-amarillo">', unsafe_allow_html=True)
+        if st.button("✏️ Modificar Personal", use_container_width=True, key=f"btn_mod_pers_{ev['id']}"):
+            st.session_state["ver_ficha_id"] = None
+            st.session_state["editar_personal_id"] = ev["id"]
+            st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
 
 # ==============================================================================
 # 6. TARJETAS DE EVENTO
@@ -478,7 +482,7 @@ def renderizar_lista_eventos(lista_eventos, key_prefix="evt"):
             if es_solo_deco:
                 linea_hora_html = f'<div class="data-line">⏰ <b>Hora:</b> {ev.get("hora_contrato", ev.get("hora_citacion", "04:30 PM"))}</div>'
             else:
-                linea_hora_html = f'<div class="data-line">⏰ <b>Hora:</b> {ev.get("hora_contrato", "04:30 PM")} | <b>Citación:</b> {ev.get("hora_citacion", "04:00 PM")}</div>'
+                linea_hora_html = f'<div class="data-line">⏰ <b>Hora:</b> {ev.get("hora_contrato", "04:30 PM")}</div>'
 
             linea_direccion_html = ""
             if not es_local:
@@ -542,7 +546,9 @@ def renderizar_lista_eventos(lista_eventos, key_prefix="evt"):
                 st.markdown(html_tarjeta, unsafe_allow_html=True)
 
                 if es_local and not contrato_show:
-                    pass
+                    if st.button("📋 Ver Ficha", key=f"{key_prefix}_btn_ver_{ev['id']}", use_container_width=True):
+                        st.session_state["ver_ficha_id"] = ev["id"]
+                        st.rerun()
                 else:
                     if not tiene_personal:
                         col_btn1, col_btn2 = st.columns(2)
@@ -641,33 +647,54 @@ elif tab_seleccionada == "REGISTRO":
     
     with col1:
         marca = st.selectbox("**Marca**", ["madai", "risueña", "local"])
-        evento_nom = st.text_input("**Nombre del Evento**")
-        tipo_e = st.selectbox("**Tipo de Evento**", ["Show", "Show + Deco", "Deco", "Alquiler de Local"])
-        cliente = st.text_input("**Cliente**")
-        telefono = st.text_input("**Número (Teléfono)**")
-        direccion = st.text_input("**Dirección**")
-        fecha_e = st.date_input("**Fecha**", value=date.today())
+        
+        if marca == "local":
+            evento_nom = st.text_input("**Nombre del Evento**")
+            cliente = st.text_input("**Cliente**")
+            telefono = st.text_input("**Número (Teléfono)**")
+            fecha_e = st.date_input("**Fecha**", value=date.today())
+            tipo_e = "Alquiler de Local"
+            direccion = "Local MADAI"
+        else:
+            evento_nom = st.text_input("**Nombre del Evento**")
+            tipo_e = st.selectbox("**Tipo de Evento**", ["Show", "Show + Deco", "Deco"])
+            cliente = st.text_input("**Cliente**")
+            telefono = st.text_input("**Número (Teléfono)**")
+            direccion = st.text_input("**Dirección**")
+            fecha_e = st.date_input("**Fecha**", value=date.today())
     
     with col2:
-        if tipo_e in ["Show", "Show + Deco"]:
-            hora_cit = st.text_input("**Hora de Invitación / Citación**", value="04:00 PM")
-            hora_c = st.text_input("**Hora de Contrato**", value="04:30 PM")
-        else:
-            hora_c = st.text_input("**Hora del Evento**", value="04:30 PM")
-            hora_cit = hora_c
-
-        desc_alquiler = ""
-        monto_alquiler = 0
+        duracion_show_local = "2 horas"
         
-        # Desglose especial si es Marca LOCAL con Show
-        if marca == "local" and tipo_e in ["Show", "Show + Deco"]:
+        if marca == "local":
+            hora_c = st.text_input("**Hora de Inicio**", value="04:30 PM")
+            hora_cit = hora_c
+            
+            agregar_show_local = st.checkbox("➕ **Agregar Paquete de Show**")
             costo_local_fijo = 600
-            st.text_input("**Costo del Local (S/)**", value="600 (Fijo)", disabled=True)
-            precio_show_local = st.number_input("**Precio del Show (S/)**", min_value=0, step=10, value=250)
-            costo_t = costo_local_fijo + precio_show_local
-            st.info(f"🏠 **Costo del Local:** S/ 600 | 🎭 **Precio del Show:** S/ {precio_show_local}")
+            precio_show_local = 0
+            
+            if agregar_show_local:
+                tipo_e = "Show + Local"
+                precio_show_local = st.number_input("**Precio del Show (S/)**", min_value=0, step=10, value=250)
+                duracion_show_local = st.selectbox("⏱️ **Duración del Show**", OPCIONES_DURACION, index=1)
+                costo_t = costo_local_fijo + precio_show_local
+                st.info(f"🏠 **Costo Local (S/ 600) + Show (S/ {precio_show_local})**")
+            else:
+                costo_t = costo_local_fijo
+                st.info("🏠 **Costo Fijo del Local:** S/ 600")
+
         else:
+            if tipo_e in ["Show", "Show + Deco"]:
+                hora_cit = st.text_input("**Hora de Invitación / Citación**", value="04:00 PM")
+                hora_c = st.text_input("**Hora de Contrato**", value="04:30 PM")
+            else:
+                hora_c = st.text_input("**Hora del Evento**", value="04:30 PM")
+                hora_cit = hora_c
+
             agregar_alquiler = st.checkbox("➕ **Agregar Alquiler**")
+            desc_alquiler = ""
+            monto_alquiler = 0
             
             if agregar_alquiler:
                 desc_alquiler = st.text_input("**Descripción del Alquiler**")
@@ -685,9 +712,6 @@ elif tab_seleccionada == "REGISTRO":
 
             costo_t = costo_base + (monto_alquiler if agregar_alquiler else 0)
 
-            if agregar_alquiler:
-                st.info(f"💰 **Monto Total (incluye Alquiler):** S/ {costo_t}")
-
         st.markdown(f"💵 **Monto Total:** <b style='font-size: 1.1rem;'>S/ {costo_t:.0f}</b>", unsafe_allow_html=True)
         monto_a = st.number_input("**Monto de Adelanto (S/)**", min_value=0, step=10, value=100)
         pendiente_calc = max(0, costo_t - monto_a)
@@ -699,6 +723,10 @@ elif tab_seleccionada == "REGISTRO":
         guardar_btn = st.form_submit_button("📌 GUARDAR EVENTO", use_container_width=True)
 
         if guardar_btn:
+            desc_final = ""
+            if marca == "local" and agregar_show_local:
+                desc_final = "SHOW"
+            
             nuevo_registro = {
                 "marca": marca,
                 "evento": evento_nom,
@@ -711,9 +739,23 @@ elif tab_seleccionada == "REGISTRO":
                 "hora_citacion": hora_cit,
                 "costo_total": float(costo_t),
                 "monto_adelanto": float(monto_a),
-                "descripcion": f"Alquiler: {desc_alquiler} (S/ {monto_alquiler})" if desc_alquiler else ""
+                "descripcion": desc_final
             }
-            supabase.table("eventos").insert(nuevo_registro).execute()
+            res_ins = supabase.table("eventos").insert(nuevo_registro).execute()
+            
+            # Si es local con show, inicializamos los datos de personal con la duración seleccionada
+            if marca == "local" and agregar_show_local and res_ins.data:
+                nuevo_id = res_ins.data[0]["id"]
+                supabase.table("personal").insert({
+                    "evento_id": nuevo_id,
+                    "duracion": duracion_show_local,
+                    "animador": "Ninguno",
+                    "dalinas": "",
+                    "num_dalinas": 0,
+                    "dj": "",
+                    "staff": "",
+                    "detalles": ""
+                }).execute()
             
             st.session_state["tab_activa"] = tabs[0]
             st.rerun()
