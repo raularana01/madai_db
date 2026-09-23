@@ -21,8 +21,8 @@ def init_supabase() -> Client:
 
 supabase = init_supabase()
 
-# Lista base de animadoras
-OPCIONES_ANIMADORAS = ["Madai", "Martha", "Eusy", "Ninguno(a)", "Otra (Ingresar nombre)"]
+# Lista de animadoras actualizada
+OPCIONES_ANIMADORAS = ["Madai", "Martha", "Eusy", "Carla", "Lucia", "Ninguno", "Otro Animador"]
 
 # ==============================================================================
 # 2. CARGA DE FONDO E IMÁGENES EN BASE64
@@ -245,11 +245,11 @@ def modal_asignar_personal(evento):
         if anim_guardada in OPCIONES_ANIMADORAS:
             idx_anim = OPCIONES_ANIMADORAS.index(anim_guardada)
         elif anim_guardada:
-            idx_anim = OPCIONES_ANIMADORAS.index("Otra (Ingresar nombre)")
+            idx_anim = OPCIONES_ANIMADORAS.index("Otro Animador")
 
         anim_sel = st.selectbox("🎤 **Animadora**", OPCIONES_ANIMADORAS, index=idx_anim)
         
-        if anim_sel == "Otra (Ingresar nombre)":
+        if anim_sel == "Otro Animador":
             animador_final = st.text_input("Escribe el nombre de la Animadora:", value=anim_guardada if anim_guardada not in OPCIONES_ANIMADORAS else "")
         else:
             animador_final = anim_sel
@@ -386,7 +386,7 @@ def modal_ver_ficha(evento):
         staff = p_data.get("staff", "")
         detalles = p_data.get("detalles", "")
 
-        tiene_personal = bool((animador and animador != "Ninguno(a)") or dalinas or dj or staff)
+        tiene_personal = bool((animador and animador != "Ninguno") or dalinas or dj or staff)
 
         if tiene_personal:
             st.markdown(f'<div class="data-line">🎤 <b>Animadora:</b> {animador if animador else "No asignada"}</div>', unsafe_allow_html=True)
@@ -457,7 +457,7 @@ def renderizar_lista_eventos(lista_eventos, key_prefix="evt"):
                 dj = p_data.get("dj", "")
                 staff = p_data.get("staff", "")
                 duracion_show = p_data.get("duracion", "2 horas") or "2 horas"
-                if (animador and animador != "Ninguno(a)") or dalinas or dj or staff:
+                if (animador and animador != "Ninguno") or dalinas or dj or staff:
                     tiene_personal = True
 
             es_local = "local" in marca_raw
