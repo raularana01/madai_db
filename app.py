@@ -81,80 +81,50 @@ st.markdown("""
         border-color: #FFA000 !important;
     }
 
-    /* Tarjetas principales con colores pastel intensos */
+    /* Tarjetas principales con colores intensos */
     .card-madai {
         background-color: #E0B0FF !important;
-        border-radius: 8px 8px 0px 0px !important;
-        padding: 12px 14px 10px 14px;
-        margin-bottom: 0px !important;
+        border-radius: 8px;
+        padding: 12px 14px;
+        margin-bottom: 8px;
         color: #111111 !important;
-        box-shadow: 0px 2px 4px rgba(0,0,0,0.08);
+        box-shadow: 0px 2px 4px rgba(0,0,0,0.12);
         border-left: 6px solid #7B2CBF;
     }
 
     .card-risuena {
         background-color: #B7E4C7 !important;
-        border-radius: 8px 8px 0px 0px !important;
-        padding: 12px 14px 10px 14px;
-        margin-bottom: 0px !important;
+        border-radius: 8px;
+        padding: 12px 14px;
+        margin-bottom: 8px;
         color: #111111 !important;
-        box-shadow: 0px 2px 4px rgba(0,0,0,0.08);
+        box-shadow: 0px 2px 4px rgba(0,0,0,0.12);
         border-left: 6px solid #2B9348;
     }
 
     .card-alquiler {
         background-color: #A2D2FF !important;
-        border-radius: 8px 8px 0px 0px !important;
-        padding: 12px 14px 10px 14px;
-        margin-bottom: 0px !important;
+        border-radius: 8px;
+        padding: 12px 14px;
+        margin-bottom: 8px;
         color: #111111 !important;
-        box-shadow: 0px 2px 4px rgba(0,0,0,0.08);
+        box-shadow: 0px 2px 4px rgba(0,0,0,0.12);
         border-left: 6px solid #023E8A;
-    }
-
-    /* Eliminar espacios verticales internos de Streamlit en la columna de la tarjeta */
-    div[data-testid="stColumn"] > div {
-        gap: 0px !important;
-    }
-
-    /* Estilo para pegar los botones directamente debajo de la tarjeta */
-    .btn-card-attached button {
-        margin-top: -6px !important;
-        border-top-left-radius: 0px !important;
-        border-top-right-radius: 0px !important;
-        border-bottom-left-radius: 8px !important;
-        border-bottom-right-radius: 8px !important;
-        border: 1px solid rgba(0, 0, 0, 0.15) !important;
-        border-top: 1px solid rgba(0, 0, 0, 0.08) !important;
-        background-color: #FFFFFF !important;
-        color: #111111 !important;
-        font-weight: 600 !important;
-        font-size: 13px !important;
-        padding: 4px 6px !important;
-        min-height: 36px !important;
-        height: 36px !important;
-        transition: all 0.2s ease-in-out;
-    }
-
-    .btn-card-attached button:hover {
-        background-color: #F5F5F5 !important;
-        color: #000000 !important;
-        border-color: rgba(0, 0, 0, 0.3) !important;
     }
 
     .event-title {
         font-size: 15px;
         font-weight: bold;
         color: #111111 !important;
-        margin-top: 2px;
+        margin-top: 6px;
         margin-bottom: 8px;
     }
 
     .data-line {
         font-size: 13px;
         color: #111111 !important;
-        margin-bottom: 6px !important;
-        line-height: 1.5 !important;
+        margin-bottom: 8px !important;
+        line-height: 1.6 !important;
     }
 
     .data-line b, .data-line span {
@@ -483,7 +453,7 @@ st.session_state["tab_activa"] = opcion_menu
 st.markdown("<hr style='margin-top: 5px; margin-bottom: 15px;'/>", unsafe_allow_html=True)
 
 # ------------------------------------------------------------------------------
-# PESTAÑA 1: LISTA DE EVENTOS (BOTONES ALINEADOS Y PEGADOS + SEPARACIÓN)
+# PESTAÑA 1: LISTA DE EVENTOS
 # ------------------------------------------------------------------------------
 if st.session_state["tab_activa"] == "📋 Lista de Eventos":
     eventos = obtener_eventos()
@@ -527,41 +497,83 @@ if st.session_state["tab_activa"] == "📋 Lista de Eventos":
                 es_alquiler_local = "LOCAL" in marca_str or "ALQUILER" in marca_str
                 contrato_show = "SHOW" in str(ev.get("descripcion", "")).upper() or "SHOW" in tipo_str.upper()
 
-                # 1. CONTENIDO SUPERIOR: TARJETA
+                # Contenedor único por evento: mantiene la tarjeta y sus botones visualmente unidos.
+                if card_class == "card-alquiler":
+                    card_bg = "#A2D2FF"
+                    card_border = "#023E8A"
+                elif card_class == "card-risuena":
+                    card_bg = "#B7E4C7"
+                    card_border = "#2B9348"
+                else:
+                    card_bg = "#E0B0FF"
+                    card_border = "#7B2CBF"
+
                 st.markdown(f"""
-                    <div class="{card_class}">
-                        <div class="event-title">🎉 {ev.get("evento", "Sin Nombre")} {tipo_str}</div>
-                        <div class="data-line">⏰ <b>Hora:</b> {ev.get("hora_contrato", "04:30 PM")} | <b>Citación:</b> {ev.get("hora_citacion", "04:00 PM")}</div>
-                        <div class="data-line">👤 <b>Cliente:</b> {ev.get("cliente", "N/A")} | 📱 <b>Tel:</b> {ev.get("telefono", "N/A")}</div>
-                        <div class="data-line">📍 <b>Lugar:</b> {ev.get("direccion", "N/A")}</div>
-                        <div class="data-line">💰 <b>Total:</b> S/ {costo:.0f} | <b style="color: #D90429;">Pendiente: S/ {pendiente:.0f}</b></div>
-                    </div>
+                    <style>
+                    /* Cada evento tiene su propio contenedor para que los botones
+                       no puedan confundirse con la tarjeta siguiente. */
+                    div.st-key-event_card_{ev['id']} {{
+                        background-color: {card_bg} !important;
+                        border-left: 6px solid {card_border} !important;
+                        border-radius: 8px !important;
+                        padding: 0 0 10px 0 !important;
+                        margin-bottom: 14px !important;
+                        box-shadow: 0 2px 4px rgba(0,0,0,0.12) !important;
+                        overflow: hidden !important;
+                    }}
+
+                    div.st-key-event_card_{ev['id']} .card-madai,
+                    div.st-key-event_card_{ev['id']} .card-risuena,
+                    div.st-key-event_card_{ev['id']} .card-alquiler {{
+                        margin-bottom: 0 !important;
+                        box-shadow: none !important;
+                        border-left: 0 !important;
+                        border-radius: 0 !important;
+                    }}
+
+                    div.st-key-event_card_{ev['id']} [data-testid="stHorizontalBlock"] {{
+                        gap: 1rem !important;
+                        padding: 0 14px !important;
+                        margin-top: 2px !important;
+                    }}
+
+                    div.st-key-event_card_{ev['id']} [data-testid="stButton"] {{
+                        margin: 0 !important;
+                    }}
+
+                    div.st-key-event_card_{ev['id']} [data-testid="stButton"] button {{
+                        width: 100% !important;
+                        border-radius: 7px !important;
+                        margin: 0 !important;
+                    }}
+                    </style>
                 """, unsafe_allow_html=True)
 
-                # 2. BOTONES EN LA MISMA FILA (Lado a lado y pegados a la tarjeta)
-                if not (es_alquiler_local and not contrato_show):
-                    if not tiene_personal:
-                        # Sin personal: 2 botones en una sola fila (50% cada uno)
-                        col_b1, col_b2 = st.columns(2)
-                        with col_b1:
-                            st.markdown('<div class="btn-card-attached">', unsafe_allow_html=True)
-                            if st.button("👤 Personal", key=f"btn_pers_{ev['id']}", use_container_width=True):
-                                modal_asignar_personal(ev)
-                            st.markdown('</div>', unsafe_allow_html=True)
-                        with col_b2:
-                            st.markdown('<div class="btn-card-attached">', unsafe_allow_html=True)
+                with st.container(key=f"event_card_{ev['id']}"):
+                    st.markdown(f"""
+                        <div class="{card_class}" style="margin-bottom:0;">
+                            <div class="event-title">🎉 {ev.get('evento', 'Sin Nombre')} {tipo_str}</div>
+                            <div class="data-line">⏰ <b>Hora:</b> {ev.get('hora_contrato', '04:30 PM')} | <b>Citación:</b> {ev.get('hora_citacion', '04:00 PM')}</div>
+                            <div class="data-line">👤 <b>Cliente:</b> {ev.get('cliente', 'N/A')} | 📱 <b>Tel:</b> {ev.get('telefono', 'N/A')}</div>
+                            <div class="data-line">📍 <b>Lugar:</b> {ev.get('direccion', 'N/A')}</div>
+                            <div class="data-line">💰 <b>Total:</b> S/ {costo:.0f} | <b style="color: #D90429;">Pendiente: S/ {pendiente:.0f}</b></div>
+                        </div>
+                    """, unsafe_allow_html=True)
+
+                    if es_alquiler_local and not contrato_show:
+                        pass
+                    else:
+                        if not tiene_personal:
+                            col_btn1, col_btn2 = st.columns(2)
+                            with col_btn1:
+                                if st.button("👤 Asignar Personal", key=f"btn_pers_{ev['id']}", use_container_width=True):
+                                    modal_asignar_personal(ev)
+                            with col_btn2:
+                                if st.button("📋 Ver Ficha", key=f"btn_ver_{ev['id']}", use_container_width=True):
+                                    modal_ver_ficha(ev)
+                        else:
                             if st.button("📋 Ver Ficha", key=f"btn_ver_{ev['id']}", use_container_width=True):
                                 modal_ver_ficha(ev)
-                            st.markdown('</div>', unsafe_allow_html=True)
-                    else:
-                        # Con personal: 1 solo botón
-                        st.markdown('<div class="btn-card-attached">', unsafe_allow_html=True)
-                        if st.button("📋 Ver Ficha", key=f"btn_ver_{ev['id']}", use_container_width=True):
-                            modal_ver_ficha(ev)
-                        st.markdown('</div>', unsafe_allow_html=True)
-
-                # 3. SEPARACIÓN CLARA PARA LA SIGUIENTE TARJETA
-                st.markdown("<div style='margin-bottom: 28px;'></div>", unsafe_allow_html=True)
 
 
 # ------------------------------------------------------------------------------
@@ -604,7 +616,7 @@ elif st.session_state["tab_activa"] == "➕ Registrar Evento":
             opciones_tipo = ["Show", "Decoración", "Show + Decoración", "Alquiler de otros"]
             tipo = st.selectbox("Tipo de Evento", opciones_tipo, key=f"tipo_{f_id}")
             
-            # SI ES "Alquiler de otros"
+            # SI ES "Alquiler de otros" (SIMPLIFICADO Y SIN HORA DE CITACIÓN)
             if tipo == "Alquiler de otros":
                 evento = st.text_input("Descripción del Alquiler", key=f"evt_{f_id}")
                 direccion = st.text_input("Dirección / Ubicación", key=f"dir_{f_id}")
