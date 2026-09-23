@@ -29,6 +29,8 @@ if "editar_personal_id" not in st.session_state:
     st.session_state["editar_personal_id"] = None
 if "ver_ficha_id" not in st.session_state:
     st.session_state["ver_ficha_id"] = None
+if "tab_activa" not in st.session_state:
+    st.session_state["tab_activa"] = "HOY"
 
 # ==============================================================================
 # 2. CARGA DE RECURSOS EN BASE64
@@ -332,10 +334,15 @@ def renderizar_lista_eventos(lista_eventos, key_prefix="evt"):
 st.markdown(f'<div class="header-container"><img src="data:image/jpeg;base64,{logo_b64}" class="logo-inline"><div class="title-inline">MADAI</div></div>', unsafe_allow_html=True)
 
 tabs = ["HOY", "DÍA SIGUIENTE", "REGISTRO"]
-if "tab_activa" not in st.session_state: st.session_state["tab_activa"] = tabs[0]
 
 tab_seleccionada = st.radio("Navegación", tabs, index=tabs.index(st.session_state["tab_activa"]), horizontal=True, label_visibility="collapsed")
-st.session_state["tab_activa"] = tab_seleccionada
+
+# Limpieza automática de modales al cambiar de pestaña
+if tab_seleccionada != st.session_state["tab_activa"]:
+    st.session_state["tab_activa"] = tab_seleccionada
+    st.session_state["editar_personal_id"] = None
+    st.session_state["ver_ficha_id"] = None
+    st.rerun()
 
 eventos_todos = obtener_eventos()
 
@@ -385,7 +392,7 @@ elif tab_seleccionada == "REGISTRO":
             "hora_contrato": hora_c, "costo_total": float(costo_t), "monto_adelanto": float(monto_a)
         }).execute()
         st.cache_data.clear()
-        st.session_state["tab_activa"] = tabs[0]
+        st.session_state["tab_activa"] = "HOY"
         st.rerun()
 
 # ==============================================================================
