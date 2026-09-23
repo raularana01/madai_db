@@ -50,6 +50,20 @@ st.markdown("""
         width: 100%;
     }
 
+    .header-alquiler {
+        background-color: #023E8A !important;
+        color: white !important;
+        padding: 8px 12px;
+        border-radius: 6px;
+        text-align: center;
+        font-size: 14px;
+        font-weight: bold;
+        margin-top: 6px !important;
+        margin-bottom: 8px !important;
+        text-transform: capitalize;
+        width: 100%;
+    }
+
     /* Estilo para el botón Modificar Personal en tono amarillo */
     .btn-modificar-amarillo button {
         background-color: #FFC107 !important;
@@ -67,25 +81,35 @@ st.markdown("""
         border-color: #FFA000 !important;
     }
 
-    /* Tarjetas principales de la lista general */
+    /* Tarjetas principales de la lista general con mayor intensidad de color */
     .card-madai {
-        background-color: #EBD9F3 !important;
+        background-color: #E0B0FF !important;
         border-radius: 8px;
         padding: 12px 14px;
         margin-bottom: 8px;
         color: #111111 !important;
-        box-shadow: 0px 2px 4px rgba(0,0,0,0.1);
-        border-left: 5px solid #7B2CBF;
+        box-shadow: 0px 2px 4px rgba(0,0,0,0.12);
+        border-left: 6px solid #7B2CBF;
     }
 
     .card-risuena {
-        background-color: #D8F3DC !important;
+        background-color: #B7E4C7 !important;
         border-radius: 8px;
         padding: 12px 14px;
         margin-bottom: 8px;
         color: #111111 !important;
-        box-shadow: 0px 2px 4px rgba(0,0,0,0.1);
-        border-left: 5px solid #2B9348;
+        box-shadow: 0px 2px 4px rgba(0,0,0,0.12);
+        border-left: 6px solid #2B9348;
+    }
+
+    .card-alquiler {
+        background-color: #A2D2FF !important;
+        border-radius: 8px;
+        padding: 12px 14px;
+        margin-bottom: 8px;
+        color: #111111 !important;
+        box-shadow: 0px 2px 4px rgba(0,0,0,0.12);
+        border-left: 6px solid #023E8A;
     }
 
     .event-title {
@@ -96,7 +120,6 @@ st.markdown("""
         margin-bottom: 8px;
     }
 
-    /* Mayor holgura e interlineado entre filas de información */
     .data-line {
         font-size: 13px;
         color: #111111 !important;
@@ -332,11 +355,16 @@ def modal_ver_ficha(evento):
         tipo_str = f"({ev.get('tipo', 'Show')})" if ev.get('tipo') else ""
 
         # Marca y Color
-        marca = ev.get("marca", "Decoraciones MADAI")
-        is_risuena = "RISUEÑA" in marca.upper()
-        
-        header_class = "header-risuena" if is_risuena else "header-madai"
-        color_fondo = "#D8F3DC" if is_risuena else "#EBD9F3"
+        marca = ev.get("marca", "Decoraciones MADAI").upper()
+        if "ALQUILER" in marca:
+            header_class = "header-alquiler"
+            color_fondo = "#A2D2FF"
+        elif "RISUEÑA" in marca:
+            header_class = "header-risuena"
+            color_fondo = "#B7E4C7"
+        else:
+            header_class = "header-madai"
+            color_fondo = "#E0B0FF"
 
         st.markdown(f"""
             <style>
@@ -349,9 +377,9 @@ def modal_ver_ficha(evento):
         # 1. Cabecera Fecha
         st.markdown(f'<div class="{header_class}">📅 {fecha_fmt}</div>', unsafe_allow_html=True)
 
-        # 2. Título e Información del evento con holgura
+        # 2. Título e Información del evento
         st.markdown(f'<div class="event-title">🎉 {ev.get("evento", "Sin Nombre")} {tipo_str}</div>', unsafe_allow_html=True)
-        st.markdown(f'<div class="data-line">⏰ <b>Horario del Show:</b> {rango_horas} (Citación: {ev.get("hora_citacion", "04:00 PM")})</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="data-line">⏰ <b>Horario:</b> {rango_horas} (Citación: {ev.get("hora_citacion", "04:00 PM")})</div>', unsafe_allow_html=True)
         st.markdown(f'<div class="data-line">👤 <b>Cliente:</b> {ev.get("cliente", "N/A")} | 📱 <b>Tel:</b> {ev.get("telefono", "N/A")}</div>', unsafe_allow_html=True)
         st.markdown(f'<div class="data-line">📍 <b>Lugar:</b> {ev.get("direccion", "N/A")}</div>', unsafe_allow_html=True)
         st.markdown(f'<div class="data-line">💵 <b>Adelanto:</b> S/ {adelanto:.2f} | 💰 <b style="color: #D90429;">Pendiente: S/ {pendiente:.2f}</b></div>', unsafe_allow_html=True)
@@ -381,7 +409,7 @@ def modal_ver_ficha(evento):
 
         st.markdown("<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True)
 
-        # 5. Botón Modificar Personal (al final, en tono amarillo)
+        # 5. Botón Modificar Personal
         st.markdown('<div class="btn-modificar-amarillo">', unsafe_allow_html=True)
         if st.button("✏️ Modificar Personal", use_container_width=True, key=f"btn_mod_pers_{ev['id']}"):
             st.session_state["abrir_editar_evento"] = ev
@@ -404,6 +432,10 @@ if "abrir_editar_evento" in st.session_state:
 # ==============================================================================
 st.title("📅 Agenda Madai")
 
+# Control de pestaña activa
+if "tab_activa" not in st.session_state:
+    st.session_state["tab_activa"] = 0
+
 tab1, tab2 = st.tabs(["📋 Lista de Eventos", "➕ Registrar Evento"])
 
 with tab1:
@@ -420,11 +452,17 @@ with tab1:
                 pendiente = costo - adelanto
                 tipo_str = f"({ev.get('tipo', 'Show')})" if ev.get('tipo') else ""
                 
-                marca_str = ev.get('marca', 'Decoraciones MADAI')
-                is_risuena = "RISUEÑA" in marca_str.upper()
+                marca_str = str(ev.get('marca', 'Decoraciones MADAI')).upper()
                 
-                card_class = "card-risuena" if is_risuena else "card-madai"
+                # Asignación de color de tarjeta según marca
+                if "ALQUILER" in marca_str:
+                    card_class = "card-alquiler"
+                elif "RISUEÑA" in marca_str:
+                    card_class = "card-risuena"
+                else:
+                    card_class = "card-madai"
                 
+                # Evaluación de personal
                 personal_lista = ev.get("personal", [])
                 p_data = {}
                 if isinstance(personal_lista, list) and len(personal_lista) > 0:
@@ -441,6 +479,11 @@ with tab1:
                     if (animador and animador != "Ninguno(a)") or dalinas or dj or staff:
                         tiene_personal = True
 
+                # Identificar si es un Alquiler de Local con Show
+                es_alquiler_local = "ALQUILER" in marca_str
+                contrato_show = "SHOW" in str(ev.get("descripcion", "")).upper() or "SHOW" in tipo_str.upper()
+
+                # Renderizado de Tarjeta
                 st.markdown(f"""
                     <div class="{card_class}">
                         <div class="event-title">🎉 {ev.get('evento', 'Sin Nombre')} {tipo_str}</div>
@@ -451,22 +494,29 @@ with tab1:
                     </div>
                 """, unsafe_allow_html=True)
 
-                if not tiene_personal:
-                    col_btn1, col_btn2 = st.columns(2)
-                    with col_btn1:
-                        if st.button("👤 Asignar Personal", key=f"btn_pers_{ev['id']}", use_container_width=True):
-                            modal_asignar_personal(ev)
-                    with col_btn2:
+                # Regla de visibilidad de botones
+                # Si es Alquiler de Local SIN Show -> NO MUESTRA BOTONES
+                # Si es Alquiler de Local CON Show O cualquier otra marca -> MUESTRA BOTONES
+                if es_alquiler_local and not contrato_show:
+                    pass  # Sin botones para alquileres puros
+                else:
+                    if not tiene_personal:
+                        col_btn1, col_btn2 = st.columns(2)
+                        with col_btn1:
+                            if st.button("👤 Asignar Personal", key=f"btn_pers_{ev['id']}", use_container_width=True):
+                                modal_asignar_personal(ev)
+                        with col_btn2:
+                            if st.button("📋 Ver Ficha", key=f"btn_ver_{ev['id']}", use_container_width=True):
+                                modal_ver_ficha(ev)
+                    else:
                         if st.button("📋 Ver Ficha", key=f"btn_ver_{ev['id']}", use_container_width=True):
                             modal_ver_ficha(ev)
-                else:
-                    if st.button("📋 Ver Ficha", key=f"btn_ver_{ev['id']}", use_container_width=True):
-                        modal_ver_ficha(ev)
 
                 st.markdown("<div style='margin-bottom: 6px;'></div>", unsafe_allow_html=True)
 
+
 # ==============================================================================
-# TAB 2: REGISTRAR NUEVO EVENTO CON FORMULARIO DINÁMICO
+# TAB 2: REGISTRAR NUEVO EVENTO CON FORMULARIO AJUSTADO
 # ==============================================================================
 with tab2:
     st.header("Registrar Nuevo Evento")
@@ -474,15 +524,16 @@ with tab2:
     col_a, col_b = st.columns(2)
     
     with col_a:
-        marca = st.selectbox("Marca", ["Decoraciones MADAI", "RISUEÑA", "Otra"])
+        # Selector de Marcas actualizado (sin "Otros")
+        marca = st.selectbox("Marca", ["Decoraciones MADAI", "RISUEÑA", "Alquiler de Local"])
         fecha = st.date_input("Fecha del Evento")
         
-        # Opciones requeridas para tipo de evento
-        opciones_tipo = ["Show", "Decoración", "Show + Decoración", "Alquiler de Local", "Alquiler de otros"]
+        # Opciones para tipo de evento (sin "Alquiler de Local")
+        opciones_tipo = ["Show", "Decoración", "Show + Decoración", "Alquiler de otros"]
         tipo = st.selectbox("Tipo de Evento", opciones_tipo)
         
-        # Campos dinámicos según el tipo seleccionado
-        if tipo == "Alquiler de Local":
+        # Lógica si la marca seleccionada es Alquiler de Local
+        if marca == "Alquiler de Local":
             hora_inicio_local = st.text_input("Hora de Inicio del Alquiler", value="03:00 PM")
             evento = st.text_input("Nombre del Show / Evento / Cumpleañero(a)")
             cliente = st.text_input("Nombre del Cliente")
@@ -500,27 +551,30 @@ with tab2:
                 hora_inicio_show = ""
                 hora_fin_show = ""
         else:
+            contrata_show = False
             evento = st.text_input("Nombre del Evento / Cumpleañero(a)")
             cliente = st.text_input("Nombre del Cliente")
             telefono = st.text_input("Teléfono")
 
     with col_b:
-        if tipo == "Alquiler de Local":
+        if marca == "Alquiler de Local":
             hora_contrato = hora_inicio_local
             hora_citacion = st.text_input("Hora Citación", value="02:30 PM")
+            direccion_default = "Local MADAI"
         else:
             hora_contrato = st.text_input("Hora Contrato", value="04:30 PM")
             hora_citacion = st.text_input("Hora Citación", value="04:00 PM")
+            direccion_default = ""
             
-        direccion = st.text_input("Dirección / Ubicación", value="Local MADAI" if tipo == "Alquiler de Local" else "")
+        direccion = st.text_input("Dirección / Ubicación", value=direccion_default)
         costo_total = st.number_input("Costo Total (S/)", min_value=0.0, step=10.0, value=300.0)
         monto_adelanto = st.number_input("Monto Adelanto (S/)", min_value=0.0, step=10.0, value=100.0)
         concepto_alquiler = st.text_input("Concepto / Alquiler", value=f"Servicio de {tipo}")
 
-    # Construcción de notas o descripción adicional
+    # Construcción de notas adicionales
     notas_extra = ""
-    if tipo == "Alquiler de Local" and contrata_show:
-        notas_extra = f"Show/Animación contratado: {hora_inicio_show} a {hora_fin_show}. "
+    if marca == "Alquiler de Local" and contrata_show:
+        notas_extra = f"SHOW CONTRATADO: {hora_inicio_show} a {hora_fin_show}. "
 
     descripcion = st.text_area("Notas adicionales del evento", value=notas_extra)
     
@@ -548,4 +602,7 @@ with tab2:
             }
             guardar_evento(nuevo_payload)
             st.success("✅ ¡Evento creado exitosamente!")
+            
+            # Volver a la pestaña principal y refrescar
+            st.session_state["tab_activa"] = 0
             st.rerun()
