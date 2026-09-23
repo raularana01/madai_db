@@ -355,8 +355,8 @@ def modal_ver_ficha(evento):
         tipo_str = f"({ev.get('tipo', 'Show')})" if ev.get('tipo') else ""
 
         # Marca y Color
-        marca = ev.get("marca", "Decoraciones MADAI").upper()
-        if "ALQUILER" in marca:
+        marca = ev.get("marca", "MADAI").upper()
+        if "LOCAL" in marca or "ALQUILER" in marca:
             header_class = "header-alquiler"
             color_fondo = "#A2D2FF"
         elif "RISUEÑA" in marca:
@@ -432,6 +432,10 @@ if "abrir_editar_evento" in st.session_state:
 # ==============================================================================
 st.title("📅 Agenda Madai")
 
+# Control de pestaña mediante sesión
+if "tab_activa" not in st.session_state:
+    st.session_state["tab_activa"] = 0
+
 tab1, tab2 = st.tabs(["📋 Lista de Eventos", "➕ Registrar Evento"])
 
 with tab1:
@@ -448,9 +452,9 @@ with tab1:
                 pendiente = costo - adelanto
                 tipo_str = f"({ev.get('tipo', 'Show')})" if ev.get('tipo') else ""
                 
-                marca_str = str(ev.get('marca', 'Decoraciones MADAI')).upper()
+                marca_str = str(ev.get('marca', 'MADAI')).upper()
                 
-                if "ALQUILER" in marca_str:
+                if "LOCAL" in marca_str or "ALQUILER" in marca_str:
                     card_class = "card-alquiler"
                 elif "RISUEÑA" in marca_str:
                     card_class = "card-risuena"
@@ -473,7 +477,7 @@ with tab1:
                     if (animador and animador != "Ninguno(a)") or dalinas or dj or staff:
                         tiene_personal = True
 
-                es_alquiler_local = "ALQUILER" in marca_str
+                es_alquiler_local = "LOCAL" in marca_str or "ALQUILER" in marca_str
                 contrato_show = "SHOW" in str(ev.get("descripcion", "")).upper() or "SHOW" in tipo_str.upper()
 
                 st.markdown(f"""
@@ -505,7 +509,7 @@ with tab1:
 
 
 # ==============================================================================
-# TAB 2: REGISTRAR NUEVO EVENTO CON LÓGICA DE ALQUILER DE LOCAL
+# TAB 2: REGISTRAR NUEVO EVENTO
 # ==============================================================================
 with tab2:
     st.header("Registrar Nuevo Evento")
@@ -513,10 +517,11 @@ with tab2:
     col_a, col_b = st.columns(2)
     
     with col_a:
-        marca = st.selectbox("Marca", ["Decoraciones MADAI", "RISUEÑA", "Alquiler de Local"])
+        # Selector de Marcas
+        marca = st.selectbox("Marca", ["MADAI", "RISUEÑA", "LOCAL"])
         
-        # SI ES ALQUILER DE LOCAL: Oculta tipo de evento y pide los datos específicos
-        if marca == "Alquiler de Local":
+        # SI ES MARCA LOCAL: Oculta tipo de evento y ajusta campos requeridos
+        if marca == "LOCAL":
             tipo = "Alquiler de Local"
             evento = st.text_input("Temática del Evento")
             fecha = st.date_input("Fecha del Evento")
@@ -527,16 +532,10 @@ with tab2:
             # Checkbox para agregar show
             contrata_show = st.checkbox("¿Desea agregar Show o Animación?")
             if contrata_show:
-                col_s1, col_s2 = st.columns(2)
-                with col_s1:
-                    hora_inicio_show = st.text_input("Hora Inicio del Show", value="04:30 PM")
-                with col_s2:
-                    hora_fin_show = st.text_input("Hora Fin del Show", value="06:30 PM")
-                
+                hora_inicio_show = st.text_input("Hora Inicio del Show", value="04:30 PM")
                 monto_show = st.number_input("Monto del Show (S/)", min_value=0.0, step=10.0, value=300.0)
             else:
                 hora_inicio_show = ""
-                hora_fin_show = ""
                 monto_show = 0.0
 
         else:
@@ -549,15 +548,19 @@ with tab2:
             contrata_show = False
 
     with col_b:
-        if marca == "Alquiler de Local":
+        if marca == "LOCAL":
             hora_citacion = st.text_input("Hora Citación Staff", value="02:30 PM")
             direccion = st.text_input("Dirección / Ubicación", value="Local MADAI")
             
-            # Cálculo dinámico del costo
+            # Cálculo de Costo Limpio
             costo_base_alquiler = 600.0
             costo_total = costo_base_alquiler + monto_show
             
-            st.markdown(f"**Costo Total Calculado:** S/ {costo_total:.2f} *(Base Alquiler S/ 600.00 + Show S/ {monto_show:.2f})*")
+            if contrata_show:
+                st.markdown(f"**Costo Total Calculado:** S/ {costo_total:.2f} *(Base Local S/ 600.00 + Show S/ {monto_show:.2f})*")
+            else:
+                st.markdown(f"**Costo Total:** S/ {costo_total:.2f}")
+
             monto_adelanto = st.number_input("Monto de Adelanto (S/)", min_value=0.0, max_value=costo_total, step=10.0, value=200.0)
             saldo_pendiente = costo_total - monto_adelanto
             st.markdown(f"**Saldo Pendiente:** <span style='color: #D90429; font-weight: bold;'>S/ {saldo_pendiente:.2f}</span>", unsafe_allow_html=True)
@@ -574,8 +577,8 @@ with tab2:
 
     # Notas adicionales automáticas
     notas_extra = ""
-    if marca == "Alquiler de Local" and contrata_show:
-        notas_extra = f"SHOW ADICIONAL CONTRATADO: {hora_inicio_show} a {hora_fin_show} (S/ {monto_show:.2f}). "
+    if marca == "LOCAL" and contrata_show:
+        notas_extra = f"SHOW ADICIONAL CONTRATADO: Inicio {hora_inicio_show} (S/ {monto_show:.2f}). "
 
     descripcion = st.text_area("Notas adicionales del evento", value=notas_extra)
     
@@ -604,4 +607,6 @@ with tab2:
             guardar_evento(nuevo_payload)
             st.success("✅ ¡Evento guardado exitosamente!")
             
+            # Redirección directa a la pantalla de tarjetas principal
+            st.session_state["tab_activa"] = 0
             st.rerun()
