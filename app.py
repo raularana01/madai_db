@@ -24,7 +24,6 @@ supabase = init_supabase()
 
 # Lista de animadoras actualizada
 OPCIONES_ANIMADORAS = ["Madai", "Martha", "Eusy", "Carla", "Lucia", "Ninguno", "Otro Animador"]
-# Opciones de duración para shows (1.5h a 3h de media en media hora)
 OPCIONES_DURACION = ["1.5 horas", "2 horas", "2.5 horas", "3 horas"]
 
 # Estados globales para controlar modales sin anidamiento
@@ -68,13 +67,11 @@ st.markdown(f"""
     <style>
     {css_fondo}
 
-    /* Padding superior para que la barra de Streamlit no lo tape */
     .block-container {{
         padding-top: 3.8rem !important;
         padding-bottom: 2rem !important;
     }}
 
-    /* Cabecera Unificada (Logo + Título MADAI) */
     .header-container {{
         display: flex;
         align-items: center;
@@ -104,7 +101,6 @@ st.markdown(f"""
         letter-spacing: 1px;
     }}
 
-    /* Compactar Selector de Pestañas Radio */
     div[data-testid="stRadio"] {{
         margin-top: 0px !important;
         margin-bottom: 10px !important;
@@ -131,7 +127,6 @@ st.markdown(f"""
         color: white !important;
     }}
 
-    /* Estilos generales de tarjetas */
     .card-madai, .card-risuena, .card-alquiler {{
         padding: 0 0 12px 0;
         border-radius: 8px;
@@ -139,7 +134,6 @@ st.markdown(f"""
         position: relative;
     }}
 
-    /* Badge de marca */
     .badge-marca {{
         position: absolute;
         top: 8px;
@@ -157,12 +151,10 @@ st.markdown(f"""
     .badge-risuena {{ background-color: #2B9348; }}
     .badge-local {{ background-color: #023E8A; }}
 
-    /* Encabezados */
     .header-madai {{ background-color: #7B2CBF; color: white; padding: 6px 12px; font-weight: bold; font-size: 0.95rem; border-radius: 4px 4px 0 0; }}
     .header-risuena {{ background-color: #2B9348; color: white; padding: 6px 12px; font-weight: bold; font-size: 0.95rem; border-radius: 4px 4px 0 0; }}
     .header-alquiler {{ background-color: #023E8A; color: white; padding: 6px 12px; font-weight: bold; font-size: 0.95rem; border-radius: 4px 4px 0 0; }}
 
-    /* Formato de texto interno de tarjeta */
     .event-title {{
         font-size: 1.15rem;
         font-weight: bold;
@@ -175,7 +167,6 @@ st.markdown(f"""
         padding: 2px 12px;
     }}
 
-    /* Botón GUARDAR EVENTO en Verde Llamativo */
     div.stButton > button {{
         background-color: #28a745 !important;
         background-image: none !important;
@@ -193,7 +184,6 @@ st.markdown(f"""
         color: white !important;
     }}
 
-    /* Botón amarillo personalizado */
     .btn-modificar-amarillo button {{
         background-color: #FFC107 !important;
         color: #000 !important;
@@ -240,7 +230,6 @@ def obtener_eventos():
     return res.data if res.data else []
 
 def generar_texto_ficha(ev):
-    """Genera el texto estructurado para WhatsApp de un evento individual"""
     personal_lista = ev.get("personal", [])
     p_data = personal_lista[0] if isinstance(personal_lista, list) and len(personal_lista) > 0 else (personal_lista if isinstance(personal_lista, dict) else {})
     
@@ -298,7 +287,6 @@ def dialog_asignar_personal(evento):
     res_p = supabase.table("personal").select("*").eq("evento_id", e_id).execute()
     datos_p = res_p.data[0] if res_p.data else {}
 
-    # 1. Animadora
     anim_guardada = datos_p.get("animador", "")
     idx_anim = 0
     if anim_guardada in OPCIONES_ANIMADORAS:
@@ -313,7 +301,6 @@ def dialog_asignar_personal(evento):
     else:
         animador_final = anim_sel
 
-    # 2. Dalinas
     st.write("💃 **Dalinas**")
     num_dalinas_val = int(datos_p.get("num_dalinas", 1) or 1)
     cant_dalinas = st.number_input("Número de Dalinas", min_value=0, max_value=20, value=num_dalinas_val)
@@ -330,18 +317,13 @@ def dialog_asignar_personal(evento):
     
     dalinas_final_str = ", ".join(nombres_dalinas)
 
-    # 3. DJ
     dj_val = st.text_input("🎧 **DJ**", value=datos_p.get("dj", ""))
-
-    # 4. Staff
     staff_val = st.text_input("🛠️ **Staff**", value=datos_p.get("staff", ""))
 
-    # Duración del show
     duracion_guardada = datos_p.get("duracion", "2 horas")
     idx_dur = OPCIONES_DURACION.index(duracion_guardada) if duracion_guardada in OPCIONES_DURACION else 1
     duracion_val = st.selectbox("⏱️ **Duración del Show**", OPCIONES_DURACION, index=idx_dur)
 
-    # 5. Observaciones
     obs_val = st.text_area("📝 **Observaciones / Notas**", value=datos_p.get("detalles", ""))
 
     if st.button("💾 Guardar Personal", use_container_width=True, type="primary"):
@@ -412,7 +394,6 @@ def dialog_ver_ficha(evento):
 
     st.markdown(f'<div class="{header_class}">🏷️ {nombre_marca_header} — 📅 {fecha_fmt}</div>', unsafe_allow_html=True)
     
-    # Resumen del Evento (Sin número de celular)
     st.markdown(f'<div class="event-title">🎉 <b>Nombre del Evento:</b> {ev.get("evento", "Sin Nombre")} {tipo_str}</div>', unsafe_allow_html=True)
     st.markdown(f'<div class="data-line">👤 <b>Cliente:</b> {ev.get("cliente", "N/A")}</div>', unsafe_allow_html=True)
     st.markdown(f'<div class="data-line">⏰ <b>Hora de Contrato:</b> {ev.get("hora_contrato", "04:30 PM")}</div>', unsafe_allow_html=True)
@@ -420,7 +401,6 @@ def dialog_ver_ficha(evento):
     if "local" not in marca:
         st.markdown(f'<div class="data-line">📍 <b>Dirección:</b> {ev.get("direccion", "N/A")}</div>', unsafe_allow_html=True)
 
-    # Desglose de Local + Show
     desc_raw = str(ev.get("descripcion", "") or "").strip()
     contrato_show = "SHOW" in desc_raw.upper() or "SHOW" in tipo_raw.upper()
 
@@ -436,7 +416,6 @@ def dialog_ver_ficha(evento):
 
     st.markdown(f'<div class="data-line">💵 <b>Monto Total:</b> S/ {costo:.0f} | 💳 <b>Adelanto:</b> S/ {adelanto:.0f} | 💰 <b style="color: #D90429;">Pendiente: S/ {pendiente:.0f}</b></div>', unsafe_allow_html=True)
 
-    # Resumen de Personal Asignado
     if "local" in marca and not contrato_show:
         pass
     else:
@@ -470,14 +449,16 @@ def dialog_ver_ficha(evento):
         st.markdown('</div>', unsafe_allow_html=True)
 
 # ==============================================================================
-# 6. TARJETAS DE EVENTO
+# 6. RENDERIZAR LISTA DE EVENTOS CON CHECKBOXES
 # ==============================================================================
 def renderizar_lista_eventos(lista_eventos, key_prefix="evt"):
     if not lista_eventos:
         st.info("No hay eventos registrados para este criterio.")
-        return
+        return []
 
+    seleccionados = []
     cols = st.columns(2)
+    
     for idx, ev in enumerate(lista_eventos):
         with cols[idx % 2]:
             costo = float(ev.get('costo_total', 0) or 0)
@@ -525,7 +506,6 @@ def renderizar_lista_eventos(lista_eventos, key_prefix="evt"):
             es_local = "local" in marca_raw
             desc_raw = str(ev.get("descripcion", "") or "").strip()
             contrato_show = "SHOW" in desc_raw.upper() or "SHOW" in tipo_str.upper()
-
             es_solo_deco = tipo_str.strip().lower() == "deco"
             
             if es_solo_deco:
@@ -596,8 +576,7 @@ def renderizar_lista_eventos(lista_eventos, key_prefix="evt"):
             with st.container(key=f"{key_prefix}_event_card_{ev['id']}"):
                 st.markdown(html_tarjeta, unsafe_allow_html=True)
 
-                # Botones de acción organizados por columnas
-                col_b1, col_b2 = st.columns(2)
+                col_b1, col_b2, col_b3 = st.columns([1.2, 1.2, 1.5])
                 
                 with col_b1:
                     if es_local and not contrato_show:
@@ -615,14 +594,17 @@ def renderizar_lista_eventos(lista_eventos, key_prefix="evt"):
                                 st.rerun()
 
                 with col_b2:
-                    texto_wsp = generar_texto_ficha(ev)
-                    url_wsp = f"https://wa.me/?text={urllib.parse.quote(texto_wsp)}"
-                    st.markdown(
-                        f'<a href="{url_wsp}" target="_blank" style="text-decoration: none;">'
-                        f'<button style="width: 100%; background-color: #25D366; color: white; border: none; padding: 6px 4px; border-radius: 7px; font-weight: bold; font-size: 0.85rem; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">💬 WhatsApp</button>'
-                        f'</a>',
-                        unsafe_allow_html=True
-                    )
+                    if tiene_personal and not (es_local and not contrato_show):
+                        if st.button("✏️ Editar", key=f"{key_prefix}_btn_edit_{ev['id']}", use_container_width=True):
+                            st.session_state["editar_personal_id"] = ev["id"]
+                            st.rerun()
+
+                with col_b3:
+                    chk = st.checkbox("☑️ Enviar", key=f"{key_prefix}_chk_{ev['id']}")
+                    if chk:
+                        seleccionados.append(ev)
+
+    return seleccionados
 
 # ==============================================================================
 # 7. CABECERA ALINEADA EN UNA FILA (LOGO + TÍTULO "MADAI")
@@ -663,21 +645,21 @@ if tab_seleccionada == "HOY":
     eventos_todos = obtener_eventos()
     eventos_hoy = [e for e in eventos_todos if str(e.get("fecha")) == hoy_str]
 
-    # Botón para enviar todas las fichas de hoy en un solo mensaje de WhatsApp
-    if eventos_hoy:
-        texto_masivo = f"📋 *RESUMEN DE EVENTOS PARA HOY* ({formatear_fecha_larga(hoy_str)})\n\n"
-        for idx, ev_m in enumerate(eventos_hoy, 1):
+    seleccionados_hoy = renderizar_lista_eventos(eventos_hoy, key_prefix="hoy")
+
+    if seleccionados_hoy:
+        st.markdown("<br>", unsafe_allow_html=True)
+        texto_masivo = f"📋 *RESUMEN DE EVENTOS SELECCIONADOS* ({formatear_fecha_larga(hoy_str)})\n\n"
+        for idx, ev_m in enumerate(seleccionados_hoy, 1):
             texto_masivo += f"--- *EVENTO {idx}* ---\n" + generar_texto_ficha(ev_m) + "\n"
         
         url_masivo = f"https://wa.me/?text={urllib.parse.quote(texto_masivo)}"
         st.markdown(
             f'<a href="{url_masivo}" target="_blank" style="text-decoration: none;">'
-            f'<button style="width: 100%; background-color: #25D366; color: white; border: none; padding: 10px; border-radius: 8px; font-weight: bold; font-size: 1rem; cursor: pointer; margin-bottom: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.15);">📤 Enviar TODAS las fichas de hoy al WhatsApp Grupal</button>'
+            f'<button style="width: 100%; background-color: #25D366; color: white; border: none; padding: 12px; border-radius: 8px; font-weight: bold; font-size: 1.05rem; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.15);">📤 Enviar Fichas Seleccionadas al WhatsApp Grupal</button>'
             f'</a>',
             unsafe_allow_html=True
         )
-
-    renderizar_lista_eventos(eventos_hoy, key_prefix="hoy")
 
 # ------------------------------------------------------------------------------
 # PESTAÑA 2: DÍA SIGUIENTE
@@ -692,21 +674,21 @@ elif tab_seleccionada == "DÍA SIGUIENTE":
     
     st.write(f"Mostrando eventos programados para mañana: **{formatear_fecha_larga(dia_sig_str)}**")
 
-    # Botón para enviar todas las fichas del día siguiente juntas
-    if eventos_sig:
-        texto_masivo_sig = f"📋 *RESUMEN DE EVENTOS PARA MAÑANA* ({formatear_fecha_larga(dia_sig_str)})\n\n"
-        for idx, ev_s in enumerate(eventos_sig, 1):
+    seleccionados_sig = renderizar_lista_eventos(eventos_sig, key_prefix="sig")
+
+    if seleccionados_sig:
+        st.markdown("<br>", unsafe_allow_html=True)
+        texto_masivo_sig = f"📋 *RESUMEN DE EVENTOS SELECCIONADOS PARA MAÑANA* ({formatear_fecha_larga(dia_sig_str)})\n\n"
+        for idx, ev_s in enumerate(seleccionados_sig, 1):
             texto_masivo_sig += f"--- *EVENTO {idx}* ---\n" + generar_texto_ficha(ev_s) + "\n"
         
         url_masivo_sig = f"https://wa.me/?text={urllib.parse.quote(texto_masivo_sig)}"
         st.markdown(
             f'<a href="{url_masivo_sig}" target="_blank" style="text-decoration: none;">'
-            f'<button style="width: 100%; background-color: #25D366; color: white; border: none; padding: 10px; border-radius: 8px; font-weight: bold; font-size: 1rem; cursor: pointer; margin-bottom: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.15);">📤 Enviar TODAS las fichas de mañana al WhatsApp Grupal</button>'
+            f'<button style="width: 100%; background-color: #25D366; color: white; border: none; padding: 12px; border-radius: 8px; font-weight: bold; font-size: 1.05rem; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.15);">📤 Enviar Fichas Seleccionadas al WhatsApp Grupal</button>'
             f'</a>',
             unsafe_allow_html=True
         )
-
-    renderizar_lista_eventos(eventos_sig, key_prefix="sig")
 
 # ------------------------------------------------------------------------------
 # PESTAÑA 3: REGISTRO
@@ -813,7 +795,6 @@ elif tab_seleccionada == "REGISTRO":
         }
         res_ins = supabase.table("eventos").insert(nuevo_registro).execute()
         
-        # Si es local con show, inicializamos los datos de personal con la duración seleccionada
         if marca == "local" and agregar_show_local and res_ins.data:
             nuevo_id = res_ins.data[0]["id"]
             supabase.table("personal").insert({
