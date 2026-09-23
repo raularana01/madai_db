@@ -84,9 +84,9 @@ st.markdown("""
     /* Tarjetas principales con colores pastel intensos */
     .card-madai {
         background-color: #E0B0FF !important;
-        border-radius: 8px 8px 0px 0px;
-        padding: 12px 14px;
-        margin-bottom: 0px;
+        border-radius: 8px 8px 0px 0px !important;
+        padding: 12px 14px 8px 14px;
+        margin-bottom: 0px !important;
         color: #111111 !important;
         box-shadow: 0px 2px 4px rgba(0,0,0,0.08);
         border-left: 6px solid #7B2CBF;
@@ -94,9 +94,9 @@ st.markdown("""
 
     .card-risuena {
         background-color: #B7E4C7 !important;
-        border-radius: 8px 8px 0px 0px;
-        padding: 12px 14px;
-        margin-bottom: 0px;
+        border-radius: 8px 8px 0px 0px !important;
+        padding: 12px 14px 8px 14px;
+        margin-bottom: 0px !important;
         color: #111111 !important;
         box-shadow: 0px 2px 4px rgba(0,0,0,0.08);
         border-left: 6px solid #2B9348;
@@ -104,54 +104,34 @@ st.markdown("""
 
     .card-alquiler {
         background-color: #A2D2FF !important;
-        border-radius: 8px 8px 0px 0px;
-        padding: 12px 14px;
-        margin-bottom: 0px;
+        border-radius: 8px 8px 0px 0px !important;
+        padding: 12px 14px 8px 14px;
+        margin-bottom: 0px !important;
         color: #111111 !important;
         box-shadow: 0px 2px 4px rgba(0,0,0,0.08);
         border-left: 6px solid #023E8A;
     }
 
-    /* Contenedores de botones pegados y compactos */
-    .btn-container-madai, .btn-container-risuena, .btn-container-alquiler {
-        border-radius: 0px 0px 8px 8px;
-        padding: 6px 10px;
-        margin-bottom: 12px;
-        box-shadow: 0px 2px 4px rgba(0,0,0,0.08);
-    }
-
-    .btn-container-madai {
-        background-color: #E0B0FF !important;
-        border-left: 6px solid #7B2CBF;
-    }
-
-    .btn-container-risuena {
-        background-color: #B7E4C7 !important;
-        border-left: 6px solid #2B9348;
-    }
-
-    .btn-container-alquiler {
-        background-color: #A2D2FF !important;
-        border-left: 6px solid #023E8A;
-    }
-
-    /* Estilo de botones más pequeños, limpios y compactos */
-    .btn-compacto div[data-testid="stButton"] button {
+    /* Ajuste CSS de la Opción A: Botones chicos pegados justo debajo */
+    .container-botones-card div[data-testid="stButton"] button {
+        margin-top: 0px !important;
+        border-top-left-radius: 0px !important;
+        border-top-right-radius: 0px !important;
+        border-top: 1px solid rgba(0,0,0,0.15) !important;
         background-color: #FFFFFF !important;
         color: #111111 !important;
-        border: 1px solid rgba(0,0,0,0.2) !important;
         font-weight: 600 !important;
         font-size: 12px !important;
         padding: 2px 6px !important;
-        min-height: 28px !important;
-        height: 28px !important;
-        border-radius: 6px !important;
+        min-height: 30px !important;
+        height: 30px !important;
         transition: all 0.2s ease-in-out;
     }
 
-    .btn-compacto div[data-testid="stButton"] button:hover {
-        background-color: #F0F0F0 !important;
-        border-color: #000000 !important;
+    .container-botones-card div[data-testid="stButton"] button:hover {
+        background-color: #F5F5F5 !important;
+        color: #000000 !important;
+        border-color: rgba(0,0,0,0.3) !important;
     }
 
     .event-title {
@@ -495,7 +475,7 @@ st.session_state["tab_activa"] = opcion_menu
 st.markdown("<hr style='margin-top: 5px; margin-bottom: 15px;'/>", unsafe_allow_html=True)
 
 # ------------------------------------------------------------------------------
-# PESTAÑA 1: LISTA DE EVENTOS
+# PESTAÑA 1: LISTA DE EVENTOS (OPCIÓN A)
 # ------------------------------------------------------------------------------
 if st.session_state["tab_activa"] == "📋 Lista de Eventos":
     eventos = obtener_eventos()
@@ -515,13 +495,10 @@ if st.session_state["tab_activa"] == "📋 Lista de Eventos":
                 
                 if "LOCAL" in marca_str or "ALQUILER" in marca_str:
                     card_class = "card-alquiler"
-                    container_class = "btn-container-alquiler"
                 elif "RISUEÑA" in marca_str:
                     card_class = "card-risuena"
-                    container_class = "btn-container-risuena"
                 else:
                     card_class = "card-madai"
-                    container_class = "btn-container-madai"
                 
                 personal_lista = ev.get("personal", [])
                 p_data = {}
@@ -542,7 +519,7 @@ if st.session_state["tab_activa"] == "📋 Lista de Eventos":
                 es_alquiler_local = "LOCAL" in marca_str or "ALQUILER" in marca_str
                 contrato_show = "SHOW" in str(ev.get("descripcion", "")).upper() or "SHOW" in tipo_str.upper()
 
-                # TARJETA CON COLOR PASTEL GARANTIZADO
+                # TARJETA CON SU COLOR PASTEL INDEPENDIENTE
                 st.markdown(f"""
                     <div class="{card_class}">
                         <div class="event-title">🎉 {ev.get("evento", "Sin Nombre")} {tipo_str}</div>
@@ -553,11 +530,11 @@ if st.session_state["tab_activa"] == "📋 Lista de Eventos":
                     </div>
                 """, unsafe_allow_html=True)
 
-                # CONTENEDOR DE BOTONES PEガDOS A LA TARJETA
+                # BOTONES COMPACTOS ALINEADOS HADO A LADO Y PEGADOS A LA TARJETA
                 if es_alquiler_local and not contrato_show:
                     st.markdown("<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True)
                 else:
-                    st.markdown(f'<div class="{container_class} btn-compacto">', unsafe_allow_html=True)
+                    st.markdown('<div class="container-botones-card">', unsafe_allow_html=True)
                     
                     if not tiene_personal:
                         col_btn1, col_btn2 = st.columns(2)
@@ -572,6 +549,7 @@ if st.session_state["tab_activa"] == "📋 Lista de Eventos":
                             modal_ver_ficha(ev)
 
                     st.markdown('</div>', unsafe_allow_html=True)
+                    st.markdown("<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True)
 
 
 # ------------------------------------------------------------------------------
