@@ -22,7 +22,7 @@ def init_supabase() -> Client:
 supabase = init_supabase()
 
 # ==============================================================================
-# 2. CARGA DE FONDO E IMÁGENES
+# 2. CARGA DE FONDO E IMÁGENES EN BASE64
 # ==============================================================================
 def obtener_base64_de_archivo(ruta_archivo):
     if os.path.exists(ruta_archivo):
@@ -31,13 +31,14 @@ def obtener_base64_de_archivo(ruta_archivo):
         return base64.b64encode(data).decode()
     return None
 
-# Aplicar fondo.jpeg si existe
 fondo_b64 = obtener_base64_de_archivo("fondo.jpeg")
+logo_b64 = obtener_base64_de_archivo("logo.jpeg")
+
 css_fondo = ""
 if fondo_b64:
     css_fondo = f"""
     .stApp {{
-        background-image: linear-gradient(rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0.85)), url("data:image/jpeg;base64,{fondo_b64}");
+        background-image: linear-gradient(rgba(255, 255, 255, 0.88), rgba(255, 255, 255, 0.88)), url("data:image/jpeg;base64,{fondo_b64}");
         background-size: cover;
         background-position: center;
         background-attachment: fixed;
@@ -45,32 +46,71 @@ if fondo_b64:
     """
 
 # ==============================================================================
-# 3. ESTILOS CSS PERSONALIZADOS INFANTILES Y ESTRUCTURA
+# 3. ESTILOS CSS PERSONALIZADOS INFANTILES Y COMPACTOS
 # ==============================================================================
 st.markdown(f"""
     <style>
     {css_fondo}
 
-    /* Estilo del Título Infantil */
-    .title-madai {{
+    /* Reducción general de padding superior de la app */
+    .block-container {{
+        padding-top: 1.5rem !important;
+        padding-bottom: 2rem !important;
+    }}
+
+    /* Cabecera Unificada (Logo + Título) */
+    .header-container {{
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 12px;
+        margin-bottom: 8px;
+    }}
+
+    .logo-inline {{
+        height: 48px;
+        width: auto;
+        object-fit: contain;
+        border-radius: 6px;
+    }}
+
+    .title-inline {{
         font-family: 'Comic Sans MS', 'Chalkboard SE', 'Quicksand', sans-serif;
-        font-size: 2.6rem;
+        font-size: 2.1rem;
         font-weight: 900;
         background: linear-gradient(45deg, #7B2CBF, #FF007F, #FF9F1C, #2B9348);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         margin: 0;
         padding: 0;
-        line-height: 1.1;
+        line-height: 1;
     }}
-    
-    .subtitle-madai {{
-        font-family: 'Quicksand', sans-serif;
-        font-size: 1.05rem;
-        font-weight: 600;
-        color: #5A189A;
-        margin-top: 4px;
-        margin-bottom: 0px;
+
+    /* Compactar Selector de Pestañas Radio */
+    div[data-testid="stRadio"] {{
+        margin-top: 0px !important;
+        margin-bottom: 10px !important;
+    }}
+
+    div[data-testid="stRadio"] > div {{
+        gap: 8px !important;
+        padding: 0 !important;
+    }}
+
+    div[data-testid="stRadio"] label {{
+        background-color: rgba(255, 255, 255, 0.7) !important;
+        padding: 6px 18px !important;
+        border-radius: 20px !important;
+        border: 1.5px solid #7B2CBF !important;
+        font-weight: bold !important;
+        color: #7B2CBF !important;
+        transition: all 0.2s ease-in-out;
+        margin: 0 !important;
+    }}
+
+    div[data-testid="stRadio"] label:hover {{
+        background-color: #7B2CBF !important;
+        color: white !important;
     }}
 
     /* Estilos generales de tarjetas */
@@ -463,24 +503,21 @@ def renderizar_lista_eventos(lista_eventos, key_prefix="evt"):
                             modal_ver_ficha(ev)
 
 # ==============================================================================
-# 7. CABECERA PRINCIPAL (LOGO + TÍTULO COLORIDO)
+# 7. CABECERA ALINEADA EN UNA FILA (LOGO + TÍTULO)
 # ==============================================================================
-col_logo, col_titulo = st.columns([1, 5], vertical_alignment="center")
+html_logo = f'<img src="data:image/jpeg;base64,{logo_b64}" class="logo-inline">' if logo_b64 else ''
 
-with col_logo:
-    if os.path.exists("logo.jpeg"):
-        st.image("logo.jpeg", width=95)
-
-with col_titulo:
-    st.markdown('<div class="title-madai">AGENDA VIRTUAL MADAI</div>', unsafe_allow_html=True)
-    st.markdown('<div class="subtitle-madai">🎈 Control & Gestión de Eventos Infantiles 🎈</div>', unsafe_allow_html=True)
-
-st.markdown("<br>", unsafe_allow_html=True)
+st.markdown(f"""
+    <div class="header-container">
+        {html_logo}
+        <div class="title-inline">AGENDA VIRTUAL MADAI</div>
+    </div>
+""", unsafe_allow_html=True)
 
 # ==============================================================================
-# 8. INTERFAZ PRINCIPAL Y NAVEGACIÓN
+# 8. NAVEGACIÓN COMPACTA Y SIN ESPACIOS
 # ==============================================================================
-tabs = ["📅 Eventos del Día", "📆 Próximos Eventos", "➕ Registrar Evento"]
+tabs = ["HOY", "PROX 3 DIAS", "REGISTRO"]
 
 if "tab_activa" not in st.session_state:
     st.session_state["tab_activa"] = tabs[0]
@@ -495,23 +532,21 @@ tab_seleccionada = st.radio(
 
 st.session_state["tab_activa"] = tab_seleccionada
 
-st.markdown("---")
-
 # ------------------------------------------------------------------------------
-# PESTAÑA 1: EVENTOS DEL DÍA
+# PESTAÑA 1: HOY
 # ------------------------------------------------------------------------------
-if tab_seleccionada == "📅 Eventos del Día":
-    st.subheader("📅 Eventos del Día de Hoy")
+if tab_seleccionada == "HOY":
+    st.write("### 📅 Eventos del Día de Hoy")
     hoy_str = str(date.today())
     eventos_todos = obtener_eventos()
     eventos_hoy = [e for e in eventos_todos if str(e.get("fecha")) == hoy_str]
     renderizar_lista_eventos(eventos_hoy, key_prefix="hoy")
 
 # ------------------------------------------------------------------------------
-# PESTAÑA 2: PRÓXIMOS EVENTOS
+# PESTAÑA 2: PROX 3 DIAS
 # ------------------------------------------------------------------------------
-elif tab_seleccionada == "📆 Próximos Eventos":
-    st.subheader("📆 Próximos Eventos")
+elif tab_seleccionada == "PROX 3 DIAS":
+    st.write("### 📆 Próximos Eventos")
     hoy = date.today()
     limite_3_dias = hoy + timedelta(days=3)
     
@@ -540,10 +575,10 @@ elif tab_seleccionada == "📆 Próximos Eventos":
     renderizar_lista_eventos(eventos_filtrados, key_prefix="prox")
 
 # ------------------------------------------------------------------------------
-# PESTAÑA 3: REGISTRAR EVENTO
+# PESTAÑA 3: REGISTRO
 # ------------------------------------------------------------------------------
-elif tab_seleccionada == "➕ Registrar Evento":
-    st.subheader("➕ Registrar Nuevo Evento")
+elif tab_seleccionada == "REGISTRO":
+    st.write("### ➕ Registrar Nuevo Evento")
 
     col1, col2 = st.columns(2)
     
