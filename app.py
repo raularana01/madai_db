@@ -258,7 +258,7 @@ def modal_ver_ficha(evento):
     _mostrar_dialog()
 
 # ==============================================================================
-# 5. TARJETAS DE EVENTO
+# 5. TARJETAS DE EVENTO CON BORDES VERDES
 # ==============================================================================
 def renderizar_lista_eventos(lista_eventos, key_prefix="evt"):
     if not lista_eventos:
@@ -275,22 +275,22 @@ def renderizar_lista_eventos(lista_eventos, key_prefix="evt"):
             
             marca_raw = str(ev.get('marca', 'madai')).lower()
             
+            # Color verde para todos los bordes izquierdos
+            card_border = "#28A745"
+            
             if "local" in marca_raw:
                 card_class = "card-alquiler"
                 card_bg = "#A2D2FF"
-                card_border = "#023E8A"
                 badge_class = "badge-local"
                 nombre_marca_tag = "local"
             elif "risueña" in marca_raw or "risuena" in marca_raw:
                 card_class = "card-risuena"
                 card_bg = "#B7E4C7"
-                card_border = "#2B9348"
                 badge_class = "badge-risuena"
                 nombre_marca_tag = "risueña"
             else:
                 card_class = "card-madai"
                 card_bg = "#E0B0FF"
-                card_border = "#7B2CBF"
                 badge_class = "badge-madai"
                 nombre_marca_tag = "madai"
             
@@ -368,23 +368,25 @@ def renderizar_lista_eventos(lista_eventos, key_prefix="evt"):
                             modal_ver_ficha(ev)
 
 # ==============================================================================
-# 6. INTERFAZ PRINCIPAL
+# 6. INTERFAZ PRINCIPAL Y NAVEGACIÓN
 # ==============================================================================
 st.title("📌 Agenda Virtual MADAI")
 
 tabs = ["📅 Eventos del Día", "📆 Próximos Eventos", "➕ Registrar Evento"]
 
-# Inicializar pestaña activa en session_state si no existe
-if "tab_navegacion" not in st.session_state:
-    st.session_state["tab_navegacion"] = tabs[0]
+# Manejar la pestaña seleccionada mediante estado previo al widget
+if "tab_activa" not in st.session_state:
+    st.session_state["tab_activa"] = tabs[0]
 
 tab_seleccionada = st.radio(
     "Navegación", 
     tabs, 
-    key="tab_navegacion", 
+    index=tabs.index(st.session_state["tab_activa"]),
     horizontal=True, 
     label_visibility="collapsed"
 )
+
+st.session_state["tab_activa"] = tab_seleccionada
 
 st.markdown("---")
 
@@ -455,7 +457,6 @@ elif tab_seleccionada == "➕ Registrar Evento":
             hora_c = st.text_input("**Hora del Evento**", value="04:30 PM")
             hora_cit = hora_c
 
-        # CHECKBOX DE ALQUILER (UBICADO INMEDIATAMENTE DESPUÉS DE LA HORA)
         agregar_alquiler = st.checkbox("➕ **Agregar Alquiler**")
         
         desc_alquiler = ""
@@ -465,7 +466,6 @@ elif tab_seleccionada == "➕ Registrar Evento":
             desc_alquiler = st.text_input("**Descripción del Alquiler**")
             monto_alquiler = st.number_input("**Monto del Alquiler (S/)**", min_value=0, step=10, value=250)
 
-        # CÁLCULOS DINÁMICOS DE COSTOS
         if tipo_e == "Show + Deco":
             col_p1, col_p2 = st.columns(2)
             with col_p1:
@@ -486,7 +486,6 @@ elif tab_seleccionada == "➕ Registrar Evento":
             
         st.markdown(f"🔴 **Pendiente de Pago:** <b style='color: #D90429; font-size: 1.1rem;'>S/ {pendiente_calc}</b>", unsafe_allow_html=True)
 
-    # FORMULARIO DE GUARDADO
     with st.form("form_guardar_evento"):
         st.markdown("<br>", unsafe_allow_html=True)
         guardar_btn = st.form_submit_button("📌 GUARDAR EVENTO", use_container_width=True)
@@ -508,6 +507,6 @@ elif tab_seleccionada == "➕ Registrar Evento":
             }
             supabase.table("eventos").insert(nuevo_registro).execute()
             
-            # Cambiamos la pestaña activa en session_state a "Eventos del Día" y recargamos
-            st.session_state["tab_navegacion"] = tabs[0]
+            # Cambiamos la pestaña de redirección en st.session_state antes de recargar
+            st.session_state["tab_activa"] = tabs[0]
             st.rerun()
