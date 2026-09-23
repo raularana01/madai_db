@@ -21,6 +21,9 @@ def init_supabase() -> Client:
 
 supabase = init_supabase()
 
+# Lista base de animadoras
+OPCIONES_ANIMADORAS = ["Madai", "Martha", "Eusy", "Ninguno(a)", "Otra (Ingresar nombre)"]
+
 # ==============================================================================
 # 2. CARGA DE FONDO E IMÁGENES EN BASE64
 # ==============================================================================
@@ -224,7 +227,7 @@ def obtener_eventos():
     return res.data if res.data else []
 
 # ==============================================================================
-# 5. MODALES
+# 5. MODALES (EDITAR PERSONAL Y VER FICHA)
 # ==============================================================================
 def modal_asignar_personal(evento):
     e_id = int(evento["id"])
@@ -236,33 +239,68 @@ def modal_asignar_personal(evento):
         res_p = supabase.table("personal").select("*").eq("evento_id", e_id).execute()
         datos_p = res_p.data[0] if res_p.data else {}
 
-        with st.form(key=f"form_personal_{e_id}"):
-            animador = st.text_input("🎤 **Animador(a)**", value=datos_p.get("animador", ""))
-            dalinas = st.text_input("💃 **Dalinas**", value=datos_p.get("dalinas", ""))
-            num_dalinas = st.number_input("**Número de Dalinas**", min_value=0, max_value=20, value=int(datos_p.get("num_dalinas", 0)))
-            dj = st.text_input("🎧 **DJ**", value=datos_p.get("dj", ""))
-            staff = st.text_input("🛠️ **Staff**", value=datos_p.get("staff", ""))
-            duracion = st.selectbox("⏱️ **Duración del Show**", ["1 hora", "2 horas", "3 horas", "4 horas"], index=1)
-            detalles = st.text_area("📝 **Notas / Observaciones**", value=datos_p.get("detalles", ""))
+        # 1. Animadora
+        anim_guardada = datos_p.get("animador", "")
+        idx_anim = 0
+        if anim_guardada in OPCIONES_ANIMADORAS:
+            idx_anim = OPCIONES_ANIMADORAS.index(anim_guardada)
+        elif anim_guardada:
+            idx_anim = OPCIONES_ANIMADORAS.index("Otra (Ingresar nombre)")
 
-            if st.form_submit_button("💾 Guardar Personal", use_container_width=True):
-                payload = {
-                    "evento_id": e_id,
-                    "animador": animador,
-                    "dalinas": dalinas,
-                    "num_dalinas": num_dalinas,
-                    "dj": dj,
-                    "staff": staff,
-                    "duracion": duracion,
-                    "detalles": detalles
-                }
-                if datos_p:
-                    supabase.table("personal").update(payload).eq("id", datos_p["id"]).execute()
-                else:
-                    supabase.table("personal").insert(payload).execute()
-                
-                st.success("¡Personal guardado correctamente!")
-                st.rerun()
+        anim_sel = st.selectbox("🎤 **Animadora**", OPCIONES_ANIMADORAS, index=idx_anim)
+        
+        if anim_sel == "Otra (Ingresar nombre)":
+            animador_final = st.text_input("Escribe el nombre de la Animadora:", value=anim_guardada if anim_guardada not in OPCIONES_ANIMADORAS else "")
+        else:
+            animador_final = anim_sel
+
+        # 2. Dalinas
+        st.write("💃 **Dalinas**")
+        num_dalinas_val = int(datos_p.get("num_dalinas", 1) or 1)
+        cant_dalinas = st.number_input("Número de Dalinas", min_value=0, max_value=20, value=num_dalinas_val)
+        
+        dalinas_guardadas_str = datos_p.get("dalinas", "")
+        lista_dalinas_prev = [d.strip() for d in dalinas_guardadas_str.split(",") if d.strip()]
+        
+        nombres_dalinas = []
+        for i in range(int(cant_dalinas)):
+            val_prev = lista_dalinas_prev[i] if i < len(lista_dalinas_prev) else ""
+            nom_d = st.text_input(f"Nombre Dalina {i+1}", value=val_prev, key=f"dalina_input_{e_id}_{i}")
+            if nom_d.strip():
+                nombres_dalinas.append(nom_d.strip())
+        
+        dalinas_final_str = ", ".join(nombres_dalinas)
+
+        # 3. DJ
+        dj_val = st.text_input("🎧 **DJ**", value=datos_p.get("dj", ""))
+
+        # 4. Staff
+        staff_val = st.text_input("🛠️ **Staff**", value=datos_p.get("staff", ""))
+
+        # Duración del show
+        duracion_val = st.selectbox("⏱️ **Duración del Show**", ["1 hora", "2 horas", "3 horas", "4 horas"], index=1)
+
+        # 5. Observaciones
+        obs_val = st.text_area("📝 **Observaciones / Notas**", value=datos_p.get("detalles", ""))
+
+        if st.button("💾 Guardar Personal", use_container_width=True, type="primary"):
+            payload = {
+                "evento_id": e_id,
+                "animador": animador_final,
+                "dalinas": dalinas_final_str,
+                "num_dalinas": int(cant_dalinas),
+                "dj": dj_val,
+                "staff": staff_val,
+                "duracion": duracion_val,
+                "detalles": obs_val
+            }
+            if datos_p:
+                supabase.table("personal").update(payload).eq("id", datos_p["id"]).execute()
+            else:
+                supabase.table("personal").insert(payload).execute()
+            
+            st.success("¡Personal guardado correctamente!")
+            st.rerun()
 
     _mostrar_dialog()
 
@@ -315,52 +353,48 @@ def modal_ver_ficha(evento):
         """, unsafe_allow_html=True)
 
         st.markdown(f'<div class="{header_class}">🏷️ {nombre_marca_header} — 📅 {fecha_fmt}</div>', unsafe_allow_html=True)
-        st.markdown(f'<div class="event-title">🎉 {ev.get("evento", "Sin Nombre")} {tipo_str}</div>', unsafe_allow_html=True)
         
-        if tipo_raw.strip().lower() == "deco":
-            st.markdown(f'<div class="data-line">⏰ <b>Hora:</b> {ev.get("hora_contrato", ev.get("hora_citacion", "04:30 PM"))}</div>', unsafe_allow_html=True)
-        else:
-            st.markdown(f'<div class="data-line">⏰ <b>Horario:</b> {rango_horas} (Citación: {ev.get("hora_citacion", "04:00 PM")})</div>', unsafe_allow_html=True)
-            
+        # Resumen del Evento
+        st.markdown(f'<div class="event-title">🎉 <b>Nombre del Evento:</b> {ev.get("evento", "Sin Nombre")} {tipo_str}</div>', unsafe_allow_html=True)
         st.markdown(f'<div class="data-line">👤 <b>Cliente:</b> {ev.get("cliente", "N/A")} | 📱 <b>Tel:</b> {ev.get("telefono", "N/A")}</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="data-line">⏰ <b>Hora de Contrato:</b> {ev.get("hora_contrato", "04:30 PM")} (Citación: {ev.get("hora_citacion", "04:00 PM")})</div>', unsafe_allow_html=True)
         
         if "local" not in marca:
-            st.markdown(f'<div class="data-line">📍 <b>Lugar:</b> {ev.get("direccion", "N/A")}</div>', unsafe_allow_html=True)
-            
+            st.markdown(f'<div class="data-line">📍 <b>Dirección:</b> {ev.get("direccion", "N/A")}</div>', unsafe_allow_html=True)
+
+        # Desglose de Local + Show
         desc_raw = str(ev.get("descripcion", "") or "").strip()
         contrato_show = "SHOW" in desc_raw.upper() or "SHOW" in tipo_raw.upper()
 
         if "local" in marca and contrato_show:
             monto_show = costo - 600 if costo > 600 else 0
-            st.markdown(f'<div class="data-line">🎭 <b>Show:</b> {rango_horas}</div>', unsafe_allow_html=True)
             st.markdown(f'<div class="data-line">🏠 <b>Costo del Local:</b> S/ 600</div>', unsafe_allow_html=True)
             st.markdown(f'<div class="data-line">🎭 <b>Precio del Show:</b> S/ {monto_show:.0f}</div>', unsafe_allow_html=True)
-        else:
-            if desc_raw:
-                solo_desc = desc_raw.replace("Alquiler:", "").split("(")[0].strip()
-                if solo_desc:
-                    st.markdown(f'<div class="data-line">📦 <b>Alquiler:</b> {solo_desc}</div>', unsafe_allow_html=True)
+        elif desc_raw:
+            solo_desc = desc_raw.replace("Alquiler:", "").split("(")[0].strip()
+            if solo_desc:
+                st.markdown(f'<div class="data-line">📦 <b>Alquiler:</b> {solo_desc}</div>', unsafe_allow_html=True)
 
         st.markdown(f'<div class="data-line">💵 <b>Monto Total:</b> S/ {costo:.0f} | 💳 <b>Adelanto:</b> S/ {adelanto:.0f} | 💰 <b style="color: #D90429;">Pendiente: S/ {pendiente:.0f}</b></div>', unsafe_allow_html=True)
 
+        # Resumen de Personal Asignado
         st.markdown(f'<div class="{header_class}">👥 Personal Asignado</div>', unsafe_allow_html=True)
 
-        tiene_personal = False
-        if p_data:
-            animador = p_data.get("animador", "")
-            dalinas = p_data.get("dalinas", "")
-            dj = p_data.get("dj", "")
-            staff = p_data.get("staff", "")
+        animador = p_data.get("animador", "")
+        dalinas = p_data.get("dalinas", "")
+        dj = p_data.get("dj", "")
+        staff = p_data.get("staff", "")
+        detalles = p_data.get("detalles", "")
 
-            if (animador and animador != "Ninguno(a)") or dalinas or dj or staff:
-                tiene_personal = True
+        tiene_personal = bool((animador and animador != "Ninguno(a)") or dalinas or dj or staff)
 
         if tiene_personal:
-            st.markdown(f'<div class="data-line">🎤 <b>Animador(a):</b> {p_data.get("animador", "Ninguno(a)")}</div>', unsafe_allow_html=True)
-            st.markdown(f'<div class="data-line">💃 <b>Dalinas ({p_data.get("num_dalinas", 0)}):</b> {p_data.get("dalinas", "Ninguna")}</div>', unsafe_allow_html=True)
-            st.markdown(f'<div class="data-line">🎧 <b>DJ:</b> {p_data.get("dj", "N/A")} | 🛠️ <b>Staff:</b> {p_data.get("staff", "N/A")}</div>', unsafe_allow_html=True)
-            if p_data.get('detalles'):
-                st.markdown(f'<div class="data-line" style="margin-top:6px; font-style:italic;">📝 <b>Notas:</b> {p_data.get("detalles")}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="data-line">🎤 <b>Animadora:</b> {animador if animador else "No asignada"}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="data-line">💃 <b>Dalinas ({p_data.get("num_dalinas", 0)}):</b> {dalinas if dalinas else "Ninguna"}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="data-line">🎧 <b>DJ:</b> {dj if dj else "No asignado"}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="data-line">🛠️ <b>Staff:</b> {staff if staff else "No asignado"}</div>', unsafe_allow_html=True)
+            if detalles:
+                st.markdown(f'<div class="data-line" style="margin-top:6px; font-style:italic;">📝 <b>Observaciones:</b> {detalles}</div>', unsafe_allow_html=True)
         else:
             st.markdown('<div class="data-line" style="color: #D90429;">⚠️ Aún no se ha asignado personal a este evento.</div>', unsafe_allow_html=True)
 
@@ -642,11 +676,11 @@ elif tab_seleccionada == "REGISTRO":
             if agregar_alquiler:
                 st.info(f"💰 **Monto Total (incluye Alquiler):** S/ {costo_t}")
 
-        st.markdown(f"💵 **Monto Total:** <b style='font-size: 1.1rem;'>S/ {costo_t}</b>", unsafe_allow_html=True)
+        st.markdown(f"💵 **Monto Total:** <b style='font-size: 1.1rem;'>S/ {costo_t:.0f}</b>", unsafe_allow_html=True)
         monto_a = st.number_input("**Monto de Adelanto (S/)**", min_value=0, step=10, value=100)
         pendiente_calc = max(0, costo_t - monto_a)
             
-        st.markdown(f"🔴 **Pendiente de Pago:** <b style='color: #D90429; font-size: 1.1rem;'>S/ {pendiente_calc}</b>", unsafe_allow_html=True)
+        st.markdown(f"🔴 **Pendiente de Pago:** <b style='color: #D90429; font-size: 1.1rem;'>S/ {pendiente_calc:.0f}</b>", unsafe_allow_html=True)
 
     with st.form("form_guardar_evento"):
         st.markdown("<br>", unsafe_allow_html=True)
