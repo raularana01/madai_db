@@ -81,52 +81,77 @@ st.markdown("""
         border-color: #FFA000 !important;
     }
 
-    /* Tarjetas principales con colores intensos */
+    /* Tarjetas principales con colores pastel intensos */
     .card-madai {
         background-color: #E0B0FF !important;
-        border-radius: 8px;
-        padding: 12px 14px 8px 14px;
-        margin-bottom: 4px;
+        border-radius: 8px 8px 0px 0px;
+        padding: 12px 14px;
+        margin-bottom: 0px;
         color: #111111 !important;
-        box-shadow: 0px 2px 4px rgba(0,0,0,0.12);
+        box-shadow: 0px 2px 4px rgba(0,0,0,0.08);
         border-left: 6px solid #7B2CBF;
     }
 
     .card-risuena {
         background-color: #B7E4C7 !important;
-        border-radius: 8px;
-        padding: 12px 14px 8px 14px;
-        margin-bottom: 4px;
+        border-radius: 8px 8px 0px 0px;
+        padding: 12px 14px;
+        margin-bottom: 0px;
         color: #111111 !important;
-        box-shadow: 0px 2px 4px rgba(0,0,0,0.12);
+        box-shadow: 0px 2px 4px rgba(0,0,0,0.08);
         border-left: 6px solid #2B9348;
     }
 
     .card-alquiler {
         background-color: #A2D2FF !important;
-        border-radius: 8px;
-        padding: 12px 14px 8px 14px;
-        margin-bottom: 4px;
+        border-radius: 8px 8px 0px 0px;
+        padding: 12px 14px;
+        margin-bottom: 0px;
         color: #111111 !important;
-        box-shadow: 0px 2px 4px rgba(0,0,0,0.12);
+        box-shadow: 0px 2px 4px rgba(0,0,0,0.08);
         border-left: 6px solid #023E8A;
     }
 
-    /* Estilo de botones dentro de la tarjeta (Opción B) */
-    .card-madai button, .card-risuena button, .card-alquiler button {
-        background-color: rgba(255, 255, 255, 0.7) !important;
+    /* Contenedores de botones pegados y compactos */
+    .btn-container-madai, .btn-container-risuena, .btn-container-alquiler {
+        border-radius: 0px 0px 8px 8px;
+        padding: 6px 10px;
+        margin-bottom: 12px;
+        box-shadow: 0px 2px 4px rgba(0,0,0,0.08);
+    }
+
+    .btn-container-madai {
+        background-color: #E0B0FF !important;
+        border-left: 6px solid #7B2CBF;
+    }
+
+    .btn-container-risuena {
+        background-color: #B7E4C7 !important;
+        border-left: 6px solid #2B9348;
+    }
+
+    .btn-container-alquiler {
+        background-color: #A2D2FF !important;
+        border-left: 6px solid #023E8A;
+    }
+
+    /* Estilo de botones más pequeños, limpios y compactos */
+    .btn-compacto div[data-testid="stButton"] button {
+        background-color: #FFFFFF !important;
         color: #111111 !important;
-        border: 1px solid rgba(0, 0, 0, 0.15) !important;
-        font-weight: bold !important;
-        font-size: 13px !important;
-        padding: 4px 8px !important;
+        border: 1px solid rgba(0,0,0,0.2) !important;
+        font-weight: 600 !important;
+        font-size: 12px !important;
+        padding: 2px 6px !important;
+        min-height: 28px !important;
+        height: 28px !important;
         border-radius: 6px !important;
         transition: all 0.2s ease-in-out;
     }
 
-    .card-madai button:hover, .card-risuena button:hover, .card-alquiler button:hover {
-        background-color: rgba(255, 255, 255, 0.95) !important;
-        box-shadow: 0px 2px 4px rgba(0,0,0,0.1) !important;
+    .btn-compacto div[data-testid="stButton"] button:hover {
+        background-color: #F0F0F0 !important;
+        border-color: #000000 !important;
     }
 
     .event-title {
@@ -490,10 +515,13 @@ if st.session_state["tab_activa"] == "📋 Lista de Eventos":
                 
                 if "LOCAL" in marca_str or "ALQUILER" in marca_str:
                     card_class = "card-alquiler"
+                    container_class = "btn-container-alquiler"
                 elif "RISUEÑA" in marca_str:
                     card_class = "card-risuena"
+                    container_class = "btn-container-risuena"
                 else:
                     card_class = "card-madai"
+                    container_class = "btn-container-madai"
                 
                 personal_lista = ev.get("personal", [])
                 p_data = {}
@@ -514,35 +542,36 @@ if st.session_state["tab_activa"] == "📋 Lista de Eventos":
                 es_alquiler_local = "LOCAL" in marca_str or "ALQUILER" in marca_str
                 contrato_show = "SHOW" in str(ev.get("descripcion", "")).upper() or "SHOW" in tipo_str.upper()
 
-                # OPCIÓN B: Tarjeta HTML que engloba contenido y botones adentro
-                with st.container():
-                    st.markdown(f'<div class="{card_class}">', unsafe_allow_html=True)
-                    st.markdown(f'<div class="event-title">🎉 {ev.get("evento", "Sin Nombre")} {tipo_str}</div>', unsafe_allow_html=True)
-                    st.markdown(f'<div class="data-line">⏰ <b>Hora:</b> {ev.get("hora_contrato", "04:30 PM")} | <b>Citación:</b> {ev.get("hora_citacion", "04:00 PM")}</div>', unsafe_allow_html=True)
-                    st.markdown(f'<div class="data-line">👤 <b>Cliente:</b> {ev.get("cliente", "N/A")} | 📱 <b>Tel:</b> {ev.get("telefono", "N/A")}</div>', unsafe_allow_html=True)
-                    st.markdown(f'<div class="data-line">📍 <b>Lugar:</b> {ev.get("direccion", "N/A")}</div>', unsafe_allow_html=True)
-                    st.markdown(f'<div class="data-line">💰 <b>Total:</b> S/ {costo:.0f} | <b style="color: #D90429;">Pendiente: S/ {pendiente:.0f}</b></div>', unsafe_allow_html=True)
-                    
-                    st.markdown("<div style='margin-top: 6px;'></div>", unsafe_allow_html=True)
+                # TARJETA CON COLOR PASTEL GARANTIZADO
+                st.markdown(f"""
+                    <div class="{card_class}">
+                        <div class="event-title">🎉 {ev.get("evento", "Sin Nombre")} {tipo_str}</div>
+                        <div class="data-line">⏰ <b>Hora:</b> {ev.get("hora_contrato", "04:30 PM")} | <b>Citación:</b> {ev.get("hora_citacion", "04:00 PM")}</div>
+                        <div class="data-line">👤 <b>Cliente:</b> {ev.get("cliente", "N/A")} | 📱 <b>Tel:</b> {ev.get("telefono", "N/A")}</div>
+                        <div class="data-line">📍 <b>Lugar:</b> {ev.get("direccion", "N/A")}</div>
+                        <div class="data-line">💰 <b>Total:</b> S/ {costo:.0f} | <b style="color: #D90429;">Pendiente: S/ {pendiente:.0f}</b></div>
+                    </div>
+                """, unsafe_allow_html=True)
 
-                    # Botones dentro de la misma tarjeta usando la cuadrícula de Streamlit
-                    if es_alquiler_local and not contrato_show:
-                        pass
-                    else:
-                        if not tiene_personal:
-                            col_btn1, col_btn2 = st.columns(2)
-                            with col_btn1:
-                                if st.button("👤 Asignar Personal", key=f"btn_pers_{ev['id']}", use_container_width=True):
-                                    modal_asignar_personal(ev)
-                            with col_btn2:
-                                if st.button("📋 Ver Ficha", key=f"btn_ver_{ev['id']}", use_container_width=True):
-                                    modal_ver_ficha(ev)
-                        else:
+                # CONTENEDOR DE BOTONES PEガDOS A LA TARJETA
+                if es_alquiler_local and not contrato_show:
+                    st.markdown("<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True)
+                else:
+                    st.markdown(f'<div class="{container_class} btn-compacto">', unsafe_allow_html=True)
+                    
+                    if not tiene_personal:
+                        col_btn1, col_btn2 = st.columns(2)
+                        with col_btn1:
+                            if st.button("👤 Personal", key=f"btn_pers_{ev['id']}", use_container_width=True):
+                                modal_asignar_personal(ev)
+                        with col_btn2:
                             if st.button("📋 Ver Ficha", key=f"btn_ver_{ev['id']}", use_container_width=True):
                                 modal_ver_ficha(ev)
+                    else:
+                        if st.button("📋 Ver Ficha", key=f"btn_ver_{ev['id']}", use_container_width=True):
+                            modal_ver_ficha(ev)
 
                     st.markdown('</div>', unsafe_allow_html=True)
-                    st.markdown("<div style='margin-bottom: 10px;'></div>", unsafe_allow_html=True)
 
 
 # ------------------------------------------------------------------------------
