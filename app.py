@@ -303,7 +303,7 @@ def modal_asignar_personal(evento):
 
 
 # ==============================================================================
-# 6. MODAL FICHA DETALLADA (MAYOR ESPACIADO + BOTÓN AMARILLO)
+# 6. MODAL FICHA DETALLADA
 # ==============================================================================
 def modal_ver_ficha(evento):
     e_id = int(evento["id"])
@@ -465,30 +465,72 @@ with tab1:
 
                 st.markdown("<div style='margin-bottom: 6px;'></div>", unsafe_allow_html=True)
 
+# ==============================================================================
+# TAB 2: REGISTRAR NUEVO EVENTO CON FORMULARIO DINÁMICO
+# ==============================================================================
 with tab2:
     st.header("Registrar Nuevo Evento")
-    with st.form("form_nuevo_evento"):
-        col_a, col_b = st.columns(2)
-        with col_a:
-            marca = st.selectbox("Marca", ["Decoraciones MADAI", "RISUEÑA", "Otra"])
-            fecha = st.date_input("Fecha del Evento")
-            tipo = st.text_input("Tipo de Evento", value="Show Infantil")
+    
+    col_a, col_b = st.columns(2)
+    
+    with col_a:
+        marca = st.selectbox("Marca", ["Decoraciones MADAI", "RISUEÑA", "Otra"])
+        fecha = st.date_input("Fecha del Evento")
+        
+        # Opciones requeridas para tipo de evento
+        opciones_tipo = ["Show", "Decoración", "Show + Decoración", "Alquiler de Local", "Alquiler de otros"]
+        tipo = st.selectbox("Tipo de Evento", opciones_tipo)
+        
+        # Campos dinámicos según el tipo seleccionado
+        if tipo == "Alquiler de Local":
+            hora_inicio_local = st.text_input("Hora de Inicio del Alquiler", value="03:00 PM")
+            evento = st.text_input("Nombre del Show / Evento / Cumpleañero(a)")
+            cliente = st.text_input("Nombre del Cliente")
+            telefono = st.text_input("Teléfono")
+            
+            # Checkbox para show/animación adicional
+            contrata_show = st.checkbox("¿Desea contratar Show o Animación?")
+            if contrata_show:
+                col_show1, col_show2 = st.columns(2)
+                with col_show1:
+                    hora_inicio_show = st.text_input("Hora Inicio del Show", value="04:30 PM")
+                with col_show2:
+                    hora_fin_show = st.text_input("Hora Fin del Show", value="06:30 PM")
+            else:
+                hora_inicio_show = ""
+                hora_fin_show = ""
+        else:
             evento = st.text_input("Nombre del Evento / Cumpleañero(a)")
             cliente = st.text_input("Nombre del Cliente")
             telefono = st.text_input("Teléfono")
-        
-        with col_b:
+
+    with col_b:
+        if tipo == "Alquiler de Local":
+            hora_contrato = hora_inicio_local
+            hora_citacion = st.text_input("Hora Citación", value="02:30 PM")
+        else:
             hora_contrato = st.text_input("Hora Contrato", value="04:30 PM")
             hora_citacion = st.text_input("Hora Citación", value="04:00 PM")
-            direccion = st.text_input("Dirección / Ubicación")
-            costo_total = st.number_input("Costo Total (S/)", min_value=0.0, step=10.0, value=300.0)
-            monto_adelanto = st.number_input("Monto Adelanto (S/)", min_value=0.0, step=10.0, value=100.0)
-            concepto_alquiler = st.text_input("Concepto / Alquiler", value="Show Infantil Completo")
-        
-        descripcion = st.text_area("Notas adicionales del evento")
-        
-        btn_crear = st.form_submit_button("Guardar Evento", use_container_width=True)
-        if btn_crear:
+            
+        direccion = st.text_input("Dirección / Ubicación", value="Local MADAI" if tipo == "Alquiler de Local" else "")
+        costo_total = st.number_input("Costo Total (S/)", min_value=0.0, step=10.0, value=300.0)
+        monto_adelanto = st.number_input("Monto Adelanto (S/)", min_value=0.0, step=10.0, value=100.0)
+        concepto_alquiler = st.text_input("Concepto / Alquiler", value=f"Servicio de {tipo}")
+
+    # Construcción de notas o descripción adicional
+    notas_extra = ""
+    if tipo == "Alquiler de Local" and contrata_show:
+        notas_extra = f"Show/Animación contratado: {hora_inicio_show} a {hora_fin_show}. "
+
+    descripcion = st.text_area("Notas adicionales del evento", value=notas_extra)
+    
+    st.write("")
+    btn_crear = st.button("Guardar Evento", type="primary", use_container_width=True)
+    
+    if btn_crear:
+        if not evento or not cliente:
+            st.error("Por favor completa el nombre del evento y del cliente.")
+        else:
             nuevo_payload = {
                 "marca": marca,
                 "fecha": str(fecha),
@@ -505,5 +547,5 @@ with tab2:
                 "descripcion": descripcion
             }
             guardar_evento(nuevo_payload)
-            st.success("Evento creado exitosamente.")
+            st.success("✅ ¡Evento creado exitosamente!")
             st.rerun()
