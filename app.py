@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 from supabase import create_client, Client
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 import re
 
 # ==============================================================================
@@ -140,22 +140,6 @@ st.markdown("""
     }
 
     .botones-tarjeta button {
-        min-height: 34px !important;
-        height: 34px !important;
-        padding: 2px 8px !important;
-        font-size: 13px !important;
-        line-height: 1.1 !important;
-        border-radius: 6px !important;
-    }
-
-    .boton-tarjeta-wrapper {
-        margin-top: -2px !important;
-        margin-bottom: 8px !important;
-    }
-
-
-    /* Color amarillo claro para los botones de las tarjetas */
-    .botones-tarjeta button {
         background-color: #FFF3B0 !important;
         color: #5C4A00 !important;
         border: 1px solid #F2D675 !important;
@@ -242,7 +226,7 @@ def calcular_hora_fin(hora_inicio_str, duracion_str):
 
 
 # ==============================================================================
-# 4. OPERACIONES DE BASE DE DATOS
+# 4. OPERACIONES DE BASE DE DATOS Y FILTROS
 # ==============================================================================
 def obtener_eventos():
     try:
@@ -467,7 +451,124 @@ def modal_ver_ficha(evento):
 
 
 # ==============================================================================
-# 7. CONTROL DE NAVEGACIÓN Y SESSION STATE
+# 7. FUNCIÓN COMPONENTES TARJETA (REUTILIZABLE)
+# ==============================================================================
+def renderizar_lista_eventos(lista_eventos, key_prefix="evt"):
+    if not lista_eventos:
+        st.info("No hay eventos registrados para este criterio.")
+        return
+
+    cols = st.columns(2)
+    for idx, ev in enumerate(lista_eventos):
+        with cols[idx % 2]:
+            costo = float(ev.get('costo_total', 0) or 0)
+            adelanto = float(ev.get('monto_adelanto', 0) or 0)
+            pendiente = costo - adelanto
+            tipo_str = f"({ev.get('tipo', 'Show')})" if ev.get('tipo') else ""
+            
+            marca_str = str(ev.get('marca', 'MADAI')).upper()
+            
+            if "LOCAL" in marca_str or "ALQUILER" in marca_str:
+                card_class = "card-alquiler"
+                card_bg = "#A2D2FF"
+                card_border = "#023E8A"
+            elif "RISUEÑA" in marca_str:
+                card_class = "card-risuena"
+                card_bg = "#B7E4C7"
+                card_border = "#2B9348"
+            else:
+                card_class = "card-madai"
+                card_bg = "#E0B0FF"
+                card_border = "#7B2CBF"
+            
+            personal_lista = ev.get("personal", [])
+            p_data = {}
+            if isinstance(personal_lista, list) and len(personal_lista) > 0:
+                p_data = personal_lista[0]
+            elif isinstance(personal_lista, dict):
+                p_data = personal_lista
+            
+            tiene_personal = False
+            if p_data:
+                animador = p_data.get("animador", "")
+                dalinas = p_data.get("dalinas", "")
+                dj = p_data.get("dj", "")
+                staff = p_data.get("staff", "")
+                if (animador and animador != "Ninguno(a)") or dalinas or dj or staff:
+                    tiene_personal = True
+
+            es_alquiler_local = "LOCAL" in marca_str or "ALQUILER" in marca_str
+            contrato_show = "SHOW" in str(ev.get("descripcion", "")).upper() or "SHOW" in tipo_str.upper()
+
+            st.markdown(f"""
+                <style>
+                div.st-key-{key_prefix}_event_card_{ev['id']} {{
+                    background-color: {card_bg} !important;
+                    border-left: 6px solid {card_border} !important;
+                    border-radius: 8px !important;
+                    padding: 0 0 10px 0 !important;
+                    margin-bottom: 14px !important;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.12) !important;
+                    overflow: hidden !important;
+                }}
+
+                div.st-key-{key_prefix}_event_card_{ev['id']} .card-madai,
+                div.st-key-{key_prefix}_event_card_{ev['id']} .card-risuena,
+                div.st-key-{key_prefix}_event_card_{ev['id']} .card-alquiler {{
+                    margin-bottom: 0 !important;
+                    box-shadow: none !important;
+                    border-left: 0 !important;
+                    border-radius: 0 !important;
+                }}
+
+                div.st-key-{key_prefix}_event_card_{ev['id']} [data-testid="stHorizontalBlock"] {{
+                    gap: 1rem !important;
+                    padding: 0 14px !important;
+                    margin-top: 2px !important;
+                }}
+
+                div.st-key-{key_prefix}_event_card_{ev['id']} [data-testid="stButton"] {{
+                    margin: 0 !important;
+                }}
+
+                div.st-key-{key_prefix}_event_card_{ev['id']} [data-testid="stButton"] button {{
+                    width: 100% !important;
+                    border-radius: 7px !important;
+                    margin: 0 !important;
+                }}
+                </style>
+            """, unsafe_allow_html=True)
+
+            with st.container(key=f"{key_prefix}_event_card_{ev['id']}"):
+                st.markdown(f"""
+                    <div class="{card_class}" style="margin-bottom:0;">
+                        <div class="event-title">🎉 {ev.get('evento', 'Sin Nombre')} {tipo_str}</div>
+                        <div class="data-line">📅 <b>Fecha:</b> {formatear_fecha_larga(ev.get('fecha', ''))}</div>
+                        <div class="data-line">⏰ <b>Hora:</b> {ev.get('hora_contrato', '04:30 PM')} | <b>Citación:</b> {ev.get('hora_citacion', '04:00 PM')}</div>
+                        <div class="data-line">👤 <b>Cliente:</b> {ev.get('cliente', 'N/A')} | 📱 <b>Tel:</b> {ev.get('telefono', 'N/A')}</div>
+                        <div class="data-line">📍 <b>Lugar:</b> {ev.get('direccion', 'N/A')}</div>
+                        <div class="data-line">💰 <b>Total:</b> S/ {costo:.0f} | <b style="color: #D90429;">Pendiente: S/ {pendiente:.0f}</b></div>
+                    </div>
+                """, unsafe_allow_html=True)
+
+                if es_alquiler_local and not contrato_show:
+                    pass
+                else:
+                    if not tiene_personal:
+                        col_btn1, col_btn2 = st.columns(2)
+                        with col_btn1:
+                            if st.button("👤 Asignar Personal", key=f"{key_prefix}_btn_pers_{ev['id']}", use_container_width=True):
+                                modal_asignar_personal(ev)
+                        with col_btn2:
+                            if st.button("📋 Ver Ficha", key=f"{key_prefix}_btn_ver_{ev['id']}", use_container_width=True):
+                                modal_ver_ficha(ev)
+                    else:
+                        if st.button("📋 Ver Ficha", key=f"{key_prefix}_btn_ver_{ev['id']}", use_container_width=True):
+                            modal_ver_ficha(ev)
+
+
+# ==============================================================================
+# 8. CONTROL DE NAVEGACIÓN Y SESSION STATE
 # ==============================================================================
 if "abrir_editar_evento" in st.session_state:
     evento_a_editar = st.session_state["abrir_editar_evento"]
@@ -475,22 +576,22 @@ if "abrir_editar_evento" in st.session_state:
 
 # Inicializar estados de navegación y formulario
 if "tab_activa" not in st.session_state:
-    st.session_state["tab_activa"] = "📋 Lista de Eventos"
+    st.session_state["tab_activa"] = "📅 Eventos del Día"
 
 if "form_id" not in st.session_state:
     st.session_state["form_id"] = 0
 
 
 # ==============================================================================
-# 8. VISTA PRINCIPAL CON NAVEGACIÓN DINÁMICA
+# 9. VISTA PRINCIPAL CON NAVEGACIÓN DINÁMICA
 # ==============================================================================
 st.title("📅 Agenda Madai")
 
-# Radio horizontal para cambio dinámico en Streamlit
+# Radio horizontal con las 3 pestañas requeridas
 opcion_menu = st.radio(
     "Navegación",
-    ["📋 Lista de Eventos", "➕ Registrar Evento"],
-    index=0 if st.session_state["tab_activa"] == "📋 Lista de Eventos" else 1,
+    ["📅 Eventos del Día", "📆 Próximos Eventos", "➕ Registrar Evento"],
+    index=["📅 Eventos del Día", "📆 Próximos Eventos", "➕ Registrar Evento"].index(st.session_state["tab_activa"]) if st.session_state["tab_activa"] in ["📅 Eventos del Día", "📆 Próximos Eventos", "➕ Registrar Evento"] else 0,
     horizontal=True,
     label_visibility="collapsed"
 )
@@ -499,132 +600,63 @@ opcion_menu = st.radio(
 st.session_state["tab_activa"] = opcion_menu
 st.markdown("<hr style='margin-top: 5px; margin-bottom: 15px;'/>", unsafe_allow_html=True)
 
+
 # ------------------------------------------------------------------------------
-# PESTAÑA 1: LISTA DE EVENTOS
+# PESTAÑA 1: EVENTOS DEL DÍA
 # ------------------------------------------------------------------------------
-if st.session_state["tab_activa"] == "📋 Lista de Eventos":
-    eventos = obtener_eventos()
+if st.session_state["tab_activa"] == "📅 Eventos del Día":
+    hoy_str = str(date.today())
+    eventos_todos = obtener_eventos()
     
-    if not eventos:
-        st.info("No hay eventos registrados.")
-    else:
-        cols = st.columns(2)
-        for idx, ev in enumerate(eventos):
-            with cols[idx % 2]:
-                costo = float(ev.get('costo_total', 0) or 0)
-                adelanto = float(ev.get('monto_adelanto', 0) or 0)
-                pendiente = costo - adelanto
-                tipo_str = f"({ev.get('tipo', 'Show')})" if ev.get('tipo') else ""
-                
-                marca_str = str(ev.get('marca', 'MADAI')).upper()
-                
-                if "LOCAL" in marca_str or "ALQUILER" in marca_str:
-                    card_class = "card-alquiler"
-                elif "RISUEÑA" in marca_str:
-                    card_class = "card-risuena"
-                else:
-                    card_class = "card-madai"
-                
-                personal_lista = ev.get("personal", [])
-                p_data = {}
-                if isinstance(personal_lista, list) and len(personal_lista) > 0:
-                    p_data = personal_lista[0]
-                elif isinstance(personal_lista, dict):
-                    p_data = personal_lista
-                
-                tiene_personal = False
-                if p_data:
-                    animador = p_data.get("animador", "")
-                    dalinas = p_data.get("dalinas", "")
-                    dj = p_data.get("dj", "")
-                    staff = p_data.get("staff", "")
-                    if (animador and animador != "Ninguno(a)") or dalinas or dj or staff:
-                        tiene_personal = True
-
-                es_alquiler_local = "LOCAL" in marca_str or "ALQUILER" in marca_str
-                contrato_show = "SHOW" in str(ev.get("descripcion", "")).upper() or "SHOW" in tipo_str.upper()
-
-                # Contenedor único por evento: mantiene la tarjeta y sus botones visualmente unidos.
-                if card_class == "card-alquiler":
-                    card_bg = "#A2D2FF"
-                    card_border = "#023E8A"
-                elif card_class == "card-risuena":
-                    card_bg = "#B7E4C7"
-                    card_border = "#2B9348"
-                else:
-                    card_bg = "#E0B0FF"
-                    card_border = "#7B2CBF"
-
-                st.markdown(f"""
-                    <style>
-                    /* Cada evento tiene su propio contenedor para que los botones
-                       no puedan confundirse con la tarjeta siguiente. */
-                    div.st-key-event_card_{ev['id']} {{
-                        background-color: {card_bg} !important;
-                        border-left: 6px solid {card_border} !important;
-                        border-radius: 8px !important;
-                        padding: 0 0 10px 0 !important;
-                        margin-bottom: 14px !important;
-                        box-shadow: 0 2px 4px rgba(0,0,0,0.12) !important;
-                        overflow: hidden !important;
-                    }}
-
-                    div.st-key-event_card_{ev['id']} .card-madai,
-                    div.st-key-event_card_{ev['id']} .card-risuena,
-                    div.st-key-event_card_{ev['id']} .card-alquiler {{
-                        margin-bottom: 0 !important;
-                        box-shadow: none !important;
-                        border-left: 0 !important;
-                        border-radius: 0 !important;
-                    }}
-
-                    div.st-key-event_card_{ev['id']} [data-testid="stHorizontalBlock"] {{
-                        gap: 1rem !important;
-                        padding: 0 14px !important;
-                        margin-top: 2px !important;
-                    }}
-
-                    div.st-key-event_card_{ev['id']} [data-testid="stButton"] {{
-                        margin: 0 !important;
-                    }}
-
-                    div.st-key-event_card_{ev['id']} [data-testid="stButton"] button {{
-                        width: 100% !important;
-                        border-radius: 7px !important;
-                        margin: 0 !important;
-                    }}
-                    </style>
-                """, unsafe_allow_html=True)
-
-                with st.container(key=f"event_card_{ev['id']}"):
-                    st.markdown(f"""
-                        <div class="{card_class}" style="margin-bottom:0;">
-                            <div class="event-title">🎉 {ev.get('evento', 'Sin Nombre')} {tipo_str}</div>
-                            <div class="data-line">⏰ <b>Hora:</b> {ev.get('hora_contrato', '04:30 PM')} | <b>Citación:</b> {ev.get('hora_citacion', '04:00 PM')}</div>
-                            <div class="data-line">👤 <b>Cliente:</b> {ev.get('cliente', 'N/A')} | 📱 <b>Tel:</b> {ev.get('telefono', 'N/A')}</div>
-                            <div class="data-line">📍 <b>Lugar:</b> {ev.get('direccion', 'N/A')}</div>
-                            <div class="data-line">💰 <b>Total:</b> S/ {costo:.0f} | <b style="color: #D90429;">Pendiente: S/ {pendiente:.0f}</b></div>
-                        </div>
-                    """, unsafe_allow_html=True)
-
-                    if es_alquiler_local and not contrato_show:
-                        pass
-                    else:
-                        if not tiene_personal:
-                            col_btn1, col_btn2 = st.columns(2)
-                            with col_btn1:
-                                if st.button("👤 Asignar Personal", key=f"btn_pers_{ev['id']}", use_container_width=True):
-                                    modal_asignar_personal(ev)
-                            with col_btn2:
-                                if st.button("📋 Ver Ficha", key=f"btn_ver_{ev['id']}", use_container_width=True):
-                                    modal_ver_ficha(ev)
-                        else:
-                            if st.button("📋 Ver Ficha", key=f"btn_ver_{ev['id']}", use_container_width=True):
-                                modal_ver_ficha(ev)
+    # Filtrar solo eventos de HOY
+    eventos_hoy = [ev for ev in eventos_todos if str(ev.get("fecha")) == hoy_str]
+    
+    st.subheader(f"📌 Eventos programados para hoy ({formatear_fecha_larga(hoy_str)})")
+    renderizar_lista_eventos(eventos_hoy, key_prefix="hoy")
 
 
 # ------------------------------------------------------------------------------
-# PESTAÑA 2: REGISTRAR NUEVO EVENTO
+# PESTAÑA 2: PRÓXIMOS EVENTOS (MÁX. 3 DÍAS CON FILTRO DE FECHA)
+# ------------------------------------------------------------------------------
+elif st.session_state["tab_activa"] == "📆 Próximos Eventos":
+    st.subheader("📆 Próximos Eventos")
+    
+    hoy = date.today()
+    limite_3_dias = hoy + timedelta(dias=3)
+    
+    col_f1, col_f2 = st.columns([1, 2])
+    with col_f1:
+        fecha_filtrada = st.date_input(
+            "🔎 Filtrar por fecha específica:",
+            value=None,
+            help="Selecciona una fecha para ver solo sus eventos, o borra el campo para ver los próximos 3 días."
+        )
+
+    eventos_todos = obtener_eventos()
+
+    if fecha_filtrada:
+        # Si eligió una fecha en el date_input
+        str_f = str(fecha_filtrada)
+        eventos_filtrados = [ev for ev in eventos_todos if str(ev.get("fecha")) == str_f]
+        st.write(f"Mostrando resultados para: **{formatear_fecha_larga(str_f)}**")
+    else:
+        # Si no hay fecha elegida, mostrar eventos de hoy a los próximos 3 días
+        eventos_filtrados = []
+        for ev in eventos_todos:
+            f_str = str(ev.get("fecha"))
+            try:
+                f_dt = datetime.strptime(f_str, "%Y-%m-%d").date()
+                if hoy <= f_dt <= limite_3_dias:
+                    eventos_filtrados.append(ev)
+            except ValueError:
+                pass
+        st.write(f"Mostrando eventos programados desde hoy **{hoy.strftime('%d/%m/%Y')}** hasta **{limite_3_dias.strftime('%d/%m/%Y')}**")
+
+    renderizar_lista_eventos(eventos_filtrados, key_prefix="prox")
+
+
+# ------------------------------------------------------------------------------
+# PESTAÑA 3: REGISTRAR NUEVO EVENTO
 # ------------------------------------------------------------------------------
 elif st.session_state["tab_activa"] == "➕ Registrar Evento":
     st.header("Registrar Nuevo Evento")
@@ -663,7 +695,7 @@ elif st.session_state["tab_activa"] == "➕ Registrar Evento":
             opciones_tipo = ["Show", "Decoración", "Show + Decoración", "Alquiler de otros"]
             tipo = st.selectbox("Tipo de Evento", opciones_tipo, key=f"tipo_{f_id}")
             
-            # SI ES "Alquiler de otros" (SIMPLIFICADO Y SIN HORA DE CITACIÓN)
+            # SI ES "Alquiler de otros"
             if tipo == "Alquiler de otros":
                 evento = st.text_input("Descripción del Alquiler", key=f"evt_{f_id}")
                 direccion = st.text_input("Dirección / Ubicación", key=f"dir_{f_id}")
@@ -806,10 +838,10 @@ elif st.session_state["tab_activa"] == "➕ Registrar Evento":
             }
             guardar_evento(nuevo_payload)
             
-            # 1. Redirigir a la vista de lista de eventos
-            st.session_state["tab_activa"] = "📋 Lista de Eventos"
+            # Redirigir a la pestaña de eventos del día
+            st.session_state["tab_activa"] = "📅 Eventos del Día"
             
-            # 2. Resetear el ID del formulario para vaciar todos los campos
+            # Resetear el ID del formulario
             st.session_state["form_id"] += 1
             
             st.rerun()
