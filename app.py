@@ -175,8 +175,7 @@ st.markdown(f"""
     }}
 
     /* Botón GUARDAR EVENTO en Verde Llamativo */
-    div[data-testid="stForm"] button[kind="primaryFormSubmit"],
-    div[data-testid="stForm"] button {{
+    div.stButton > button {{
         background-color: #28a745 !important;
         background-image: none !important;
         color: white !important;
@@ -186,8 +185,9 @@ st.markdown(f"""
         padding: 10px 0 !important;
         border-radius: 8px !important;
         box-shadow: 0 4px 6px rgba(0,0,0,0.15) !important;
+        width: 100% !important;
     }}
-    div[data-testid="stForm"] button:hover {{
+    div.stButton > button:hover {{
         background-color: #218838 !important;
         color: white !important;
     }}
@@ -718,70 +718,46 @@ elif tab_seleccionada == "REGISTRO":
             
         st.markdown(f"🔴 **Pendiente de Pago:** <b style='color: #D90429; font-size: 1.1rem;'>S/ {pendiente_calc:.0f}</b>", unsafe_allow_html=True)
 
-    with st.form("form_guardar_evento"):
-        st.markdown("<br>", unsafe_allow_html=True)
-        guardar_btn = st.form_submit_button("📌 GUARDAR EVENTO", use_container_width=True)
+    st.markdown("<br>", unsafe_allow_html=True)
+    guardar_btn = st.button("📌 GUARDAR EVENTO", use_container_width=True)
 
-        if guardar_btn:
-            desc_final = ""
-            if marca == "local" and agregar_show_local:
-                desc_final = "SHOW"
-            
-            nuevo_registro = {
-                "marca": marca,
-                "evento": evento_nom,
-                "tipo": tipo_e,
-                "cliente": cliente,
-                "telefono": telefono,
-                "direccion": direccion,
-                "fecha": str(fecha_e),
-                "hora_contrato": hora_c,
-                "hora_citacion": hora_cit,
-                "costo_total": float(costo_t),
-                "monto_adelanto": float(monto_a),
-                "descripcion": desc_final
-            }
-            res_ins = supabase.table("eventos").insert(nuevo_registro).execute()
-            
-            # Si es local con show, inicializamos los datos de personal con la duración seleccionada
-            if marca == "local" and agregar_show_local and res_ins.data:
-                nuevo_id = res_ins.data[0]["id"]
-                supabase.table("personal").insert({
-                    "evento_id": nuevo_id,
-                    "duracion": duracion_show_local,
-                    "animador": "Ninguno",
-                    "dalinas": "",
-                    "num_dalinas": 0,
-                    "dj": "",
-                    "staff": "",
-                    "detalles": ""
-                }).execute()
-            
-            st.session_state["tab_activa"] = tabs[0]
-            st.rerun()
-
-    # ==============================================================================
-    # SECCIÓN PELIGROSA: ELIMINAR TODOS LOS DATOS
-    # ==============================================================================
-    st.markdown("<br><hr>", unsafe_allow_html=True)
-    st.write("### ⚠️ Zona de Peligro")
-    
-    with st.expander("🗑️ Eliminar todos los datos de la base de datos"):
-        st.warning("Esta acción borrará absolutamente todos los eventos y registros de personal guardados en Supabase. No se puede deshacer.")
-        confirmar_borrado = st.checkbox("Confirmo que deseo eliminar TODOS los registros de la base de datos")
+    if guardar_btn:
+        desc_final = ""
+        if marca == "local" and agregar_show_local:
+            desc_final = "SHOW"
         
-        if st.button("🔥 ELIMINAR TODO", type="primary", use_container_width=True):
-            if confirmar_borrado:
-                try:
-                    # Borramos primero personal y luego eventos por integridad referencial
-                    supabase.table("personal").delete().neq("id", 0).execute()
-                    supabase.table("eventos").delete().neq("id", 0).execute()
-                    st.success("¡Base de datos vaciada exitosamente!")
-                    st.rerun()
-                except Exception as ex:
-                    st.error(f"Error al eliminar los datos: {ex}")
-            else:
-                st.error("Debes marcar la casilla de confirmación para proceder.")
+        nuevo_registro = {
+            "marca": marca,
+            "evento": evento_nom,
+            "tipo": tipo_e,
+            "cliente": cliente,
+            "telefono": telefono,
+            "direccion": direccion,
+            "fecha": str(fecha_e),
+            "hora_contrato": hora_c,
+            "hora_citacion": hora_cit,
+            "costo_total": float(costo_t),
+            "monto_adelanto": float(monto_a),
+            "descripcion": desc_final
+        }
+        res_ins = supabase.table("eventos").insert(nuevo_registro).execute()
+        
+        # Si es local con show, inicializamos los datos de personal con la duración seleccionada
+        if marca == "local" and agregar_show_local and res_ins.data:
+            nuevo_id = res_ins.data[0]["id"]
+            supabase.table("personal").insert({
+                "evento_id": nuevo_id,
+                "duracion": duracion_show_local,
+                "animador": "Ninguno",
+                "dalinas": "",
+                "num_dalinas": 0,
+                "dj": "",
+                "staff": "",
+                "detalles": ""
+            }).execute()
+        
+        st.session_state["tab_activa"] = tabs[0]
+        st.rerun()
 
 # ==============================================================================
 # 9. DISPARADOR DE MODALES AL FINAL DE LA EJECUCIÓN
