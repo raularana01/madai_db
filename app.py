@@ -130,6 +130,29 @@ st.markdown("""
     .data-line b, .data-line span {
         color: #111111 !important;
     }
+
+    /* Botones compactos de cada tarjeta */
+    .botones-tarjeta {
+        display: flex;
+        gap: 8px;
+        margin-top: 4px;
+        margin-bottom: 0;
+    }
+
+    .botones-tarjeta button {
+        min-height: 34px !important;
+        height: 34px !important;
+        padding: 2px 8px !important;
+        font-size: 13px !important;
+        line-height: 1.1 !important;
+        border-radius: 6px !important;
+    }
+
+    .boton-tarjeta-wrapper {
+        margin-top: -2px !important;
+        margin-bottom: 8px !important;
+    }
+
     </style>
 """, unsafe_allow_html=True)
 
