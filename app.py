@@ -29,45 +29,59 @@ st.markdown("""
         padding: 0 0 12px 0;
         border-radius: 8px;
         margin-bottom: 12px;
+        position: relative;
     }
 
-    /* Encabezados de marcas */
-    .header-madai {
-        background-color: #7B2CBF;
-        color: white;
-        padding: 6px 12px;
+    /* Badge de marca pequeño en la esquina superior derecha */
+    .badge-marca {
+        position: absolute;
+        top: 8px;
+        right: 12px;
+        padding: 3px 10px;
+        border-radius: 12px;
+        font-size: 0.75rem;
         font-weight: bold;
-        font-size: 0.95rem;
-        border-radius: 4px 4px 0 0;
-    }
-    .header-risuena {
-        background-color: #2B9348;
         color: white;
-        padding: 6px 12px;
-        font-weight: bold;
-        font-size: 0.95rem;
-        border-radius: 4px 4px 0 0;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.2);
     }
-    .header-alquiler {
-        background-color: #023E8A;
-        color: white;
-        padding: 6px 12px;
-        font-weight: bold;
-        font-size: 0.95rem;
-        border-radius: 4px 4px 0 0;
-    }
+    .badge-madai { background-color: #7B2CBF; }
+    .badge-risuena { background-color: #2B9348; }
+    .badge-local { background-color: #023E8A; }
+
+    /* Encabezados generales */
+    .header-madai { background-color: #7B2CBF; color: white; padding: 6px 12px; font-weight: bold; font-size: 0.95rem; border-radius: 4px 4px 0 0; }
+    .header-risuena { background-color: #2B9348; color: white; padding: 6px 12px; font-weight: bold; font-size: 0.95rem; border-radius: 4px 4px 0 0; }
+    .header-alquiler { background-color: #023E8A; color: white; padding: 6px 12px; font-weight: bold; font-size: 0.95rem; border-radius: 4px 4px 0 0; }
 
     /* Formato de texto interno de tarjeta */
     .event-title {
         font-size: 1.15rem;
         font-weight: bold;
         color: #111;
-        padding: 8px 12px 4px 12px;
+        padding: 10px 80px 4px 12px;
     }
     .data-line {
         font-size: 0.95rem;
         color: #222;
         padding: 2px 12px;
+    }
+
+    /* Botón Guardar llamativo en Registro */
+    .btn-guardar-llamativo button {
+        background: linear-gradient(135deg, #25D366 0%, #128C7E 100%) !important;
+        color: white !important;
+        font-size: 1.1rem !important;
+        font-weight: bold !important;
+        border: none !important;
+        padding: 10px 0 !important;
+        border-radius: 8px !important;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.15) !important;
+    }
+    .btn-guardar-llamativo button:hover {
+        background: linear-gradient(135deg, #128C7E 0%, #075E54 100%) !important;
+        color: white !important;
     }
 
     /* Botón amarillo personalizado */
@@ -185,12 +199,12 @@ def modal_ver_ficha(evento):
         pendiente = costo - adelanto
         tipo_str = f"({ev.get('tipo', 'Show')})" if ev.get('tipo') else ""
 
-        marca = str(ev.get("marca", "MADAI")).upper()
-        if "LOCAL" in marca or "ALQUILER" in marca:
+        marca = str(ev.get("marca", "madai")).lower()
+        if "local" in marca:
             header_class = "header-alquiler"
             color_fondo = "#A2D2FF"
-            nombre_marca_header = "LOCAL / ALQUILER"
-        elif "RISUEÑA" in marca:
+            nombre_marca_header = "LOCAL"
+        elif "risueña" in marca:
             header_class = "header-risuena"
             color_fondo = "#B7E4C7"
             nombre_marca_header = "RISUEÑA"
@@ -258,28 +272,28 @@ def renderizar_lista_eventos(lista_eventos, key_prefix="evt"):
             costo = float(ev.get('costo_total', 0) or 0)
             adelanto = float(ev.get('monto_adelanto', 0) or 0)
             pendiente = costo - adelanto
-            tipo_str = f"({ev.get('tipo', 'Show')})" if ev.get('tipo') else ""
+            tipo_str = str(ev.get('tipo', 'Show'))
             
-            marca_str = str(ev.get('marca', 'MADAI')).upper()
+            marca_raw = str(ev.get('marca', 'madai')).lower()
             
-            if "LOCAL" in marca_str or "ALQUILER" in marca_str:
+            if "local" in marca_raw:
                 card_class = "card-alquiler"
-                header_class = "header-alquiler"
                 card_bg = "#A2D2FF"
                 card_border = "#023E8A"
-                nombre_marca = "LOCAL / ALQUILER"
-            elif "RISUEÑA" in marca_str:
+                badge_class = "badge-local"
+                nombre_marca_tag = "local"
+            elif "risueña" in marca_raw or "risuena" in marca_raw:
                 card_class = "card-risuena"
-                header_class = "header-risuena"
                 card_bg = "#B7E4C7"
                 card_border = "#2B9348"
-                nombre_marca = "SHOWS RISUEÑA"
+                badge_class = "badge-risuena"
+                nombre_marca_tag = "risueña"
             else:
                 card_class = "card-madai"
-                header_class = "header-madai"
                 card_bg = "#E0B0FF"
                 card_border = "#7B2CBF"
-                nombre_marca = "DECORACIONES MADAI"
+                badge_class = "badge-madai"
+                nombre_marca_tag = "madai"
             
             personal_lista = ev.get("personal", [])
             p_data = {}
@@ -297,7 +311,7 @@ def renderizar_lista_eventos(lista_eventos, key_prefix="evt"):
                 if (animador and animador != "Ninguno(a)") or dalinas or dj or staff:
                     tiene_personal = True
 
-            es_alquiler_local = "LOCAL" in marca_str or "ALQUILER" in marca_str
+            es_local = "local" in marca_raw
             contrato_show = "SHOW" in str(ev.get("descripcion", "")).upper() or "SHOW" in tipo_str.upper()
 
             st.markdown(f"""
@@ -312,23 +326,10 @@ def renderizar_lista_eventos(lista_eventos, key_prefix="evt"):
                     overflow: hidden !important;
                 }}
 
-                div.st-key-{key_prefix}_event_card_{ev['id']} .card-madai,
-                div.st-key-{key_prefix}_event_card_{ev['id']} .card-risuena,
-                div.st-key-{key_prefix}_event_card_{ev['id']} .card-alquiler {{
-                    margin-bottom: 0 !important;
-                    box-shadow: none !important;
-                    border-left: 0 !important;
-                    border-radius: 0 !important;
-                }}
-
                 div.st-key-{key_prefix}_event_card_{ev['id']} [data-testid="stHorizontalBlock"] {{
                     gap: 1rem !important;
                     padding: 0 14px !important;
                     margin-top: 2px !important;
-                }}
-
-                div.st-key-{key_prefix}_event_card_{ev['id']} [data-testid="stButton"] {{
-                    margin: 0 !important;
                 }}
 
                 div.st-key-{key_prefix}_event_card_{ev['id']} [data-testid="stButton"] button {{
@@ -341,9 +342,9 @@ def renderizar_lista_eventos(lista_eventos, key_prefix="evt"):
 
             with st.container(key=f"{key_prefix}_event_card_{ev['id']}"):
                 st.markdown(f"""
-                    <div class="{card_class}" style="margin-bottom:0;">
-                        <div class="{header_class}" style="margin-top: 0 !important; margin-bottom: 10px !important;">🏷️ {nombre_marca}</div>
-                        <div class="event-title">🎉 {ev.get('evento', 'Sin Nombre')} {tipo_str}</div>
+                    <div class="{card_class}">
+                        <div class="badge-marca {badge_class}">{nombre_marca_tag}</div>
+                        <div class="event-title">🎉 {ev.get('evento', 'Sin Nombre')} - ({tipo_str})</div>
                         <div class="data-line">📅 <b>Fecha:</b> {formatear_fecha_larga(ev.get('fecha', ''))}</div>
                         <div class="data-line">⏰ <b>Hora:</b> {ev.get('hora_contrato', '04:30 PM')} | <b>Citación:</b> {ev.get('hora_citacion', '04:00 PM')}</div>
                         <div class="data-line">👤 <b>Cliente:</b> {ev.get('cliente', 'N/A')} | 📱 <b>Tel:</b> {ev.get('telefono', 'N/A')}</div>
@@ -352,7 +353,7 @@ def renderizar_lista_eventos(lista_eventos, key_prefix="evt"):
                     </div>
                 """, unsafe_allow_html=True)
 
-                if es_alquiler_local and not contrato_show:
+                if es_local and not contrato_show:
                     pass
                 else:
                     if not tiene_personal:
@@ -395,7 +396,7 @@ if st.session_state["tab_activa"] == "📅 Eventos del Día":
     renderizar_lista_eventos(eventos_hoy, key_prefix="hoy")
 
 # ------------------------------------------------------------------------------
-# PESTAÑA 2: PRÓXIMOS EVENTOS (CORREGIDA CON 'days=3')
+# PESTAÑA 2: PRÓXIMOS EVENTOS
 # ------------------------------------------------------------------------------
 elif st.session_state["tab_activa"] == "📆 Próximos Eventos":
     st.subheader("📆 Próximos Eventos")
@@ -432,7 +433,7 @@ elif st.session_state["tab_activa"] == "📆 Próximos Eventos":
     renderizar_lista_eventos(eventos_filtrados, key_prefix="prox")
 
 # ------------------------------------------------------------------------------
-# PESTAÑA 3: REGISTRAR EVENTO
+# PESTAÑA 3: REGISTRAR EVENTO (NUEVO ORDEN Y LÓGICA DINÁMICA)
 # ------------------------------------------------------------------------------
 elif st.session_state["tab_activa"] == "➕ Registrar Evento":
     st.subheader("➕ Registrar Nuevo Evento")
@@ -441,33 +442,70 @@ elif st.session_state["tab_activa"] == "➕ Registrar Evento":
         col1, col2 = st.columns(2)
         
         with col1:
-            marca = st.selectbox("Marca / Empresa", ["DECORACIONES MADAI", "SHOWS RISUEÑA", "LOCAL / ALQUILER"])
-            evento_nom = st.text_input("Nombre del Evento (ej: Cumpleaños de Lucas)")
-            cliente = st.text_input("Nombre del Cliente")
-            telefono = st.text_input("Teléfono del Cliente")
-            direccion = st.text_input("Lugar / Dirección del Evento")
+            marca = st.selectbox("1. Marca", ["madai", "risueña", "local"])
+            evento_nom = st.text_input("2. Nombre del Evento")
+            tipo_e = st.selectbox("3. Tipo de Evento", ["Show", "Show + Deco", "Deco"])
+            cliente = st.text_input("4. Cliente")
+            telefono = st.text_input("5. Número (Teléfono)")
+            direccion = st.text_input("6. Dirección")
+            fecha_e = st.date_input("7. Fecha", value=date.today())
         
         with col2:
-            fecha_e = st.date_input("Fecha del Evento", value=date.today())
-            hora_c = st.text_input("Hora del Contrato", value="04:30 PM")
-            hora_cit = st.text_input("Hora de Citación", value="04:00 PM")
-            costo_t = st.number_input("Costo Total (S/)", min_value=0.0, step=10.0)
-            monto_a = st.number_input("Monto Adelanto (S/)", min_value=0.0, step=10.0)
-            tipo_e = st.selectbox("Tipo", ["Show Infantil", "Alquiler de Local", "Decoración", "Otros"])
+            st.markdown("**Horarios:**")
+            if tipo_e in ["Show", "Show + Deco"]:
+                hora_cit = st.text_input("Hora de Invitación / Citación", value="04:00 PM")
+                hora_c = st.text_input("Hora de Contrato", value="04:30 PM")
+            else:
+                hora_c = st.text_input("Hora del Evento", value="04:30 PM")
+                hora_cit = hora_c
 
-        if st.form_submit_button("📌 Guardar Evento", use_container_width=True):
+            st.markdown("---")
+            st.markdown("**Montos y Pagos:**")
+            
+            if tipo_e == "Show + Deco":
+                col_p1, col_p2 = st.columns(2)
+                with col_p1:
+                    precio_show = st.number_input("Precio Show (S/)", min_value=0.0, step=10.0, value=0.0)
+                with col_p2:
+                    precio_deco = st.number_input("Precio Deco (S/)", min_value=0.0, step=10.0, value=0.0)
+                costo_t = precio_show + precio_deco
+                st.info(f"💰 **Monto Total Show + Deco:** S/ {costo_t:.2f}")
+            else:
+                costo_t = st.number_input("Monto Total (S/)", min_value=0.0, step=10.0, value=0.0)
+
+            monto_a = st.number_input("Monto de Adelanto (S/)", min_value=0.0, step=10.0, value=0.0)
+            pendiente_calc = max(0.0, costo_t - monto_a)
+            st.markdown(f"🔴 **Pendiente de Pago:** <b style='color: #D90429; font-size: 1.1rem;'>S/ {pendiente_calc:.2f}</b>", unsafe_allow_html=True)
+
+            st.markdown("---")
+            agregar_alquiler = st.checkbox("➕ Agregar Alquiler")
+            desc_alquiler = ""
+            monto_alquiler = 0.0
+            if agregar_alquiler:
+                desc_alquiler = st.text_input("Descripción del Alquiler")
+                monto_alquiler = st.number_input("Monto del Alquiler (S/)", min_value=0.0, step=10.0, value=0.0)
+
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown('<div class="btn-guardar-llamativo">', unsafe_allow_html=True)
+        guardar_btn = st.form_submit_button("📌 GUARDAR EVENTO", use_container_width=True)
+        st.markdown('</div>', unsafe_allow_html=True)
+
+        if guardar_btn:
+            costo_final = costo_t + (monto_alquiler if agregar_alquiler else 0.0)
+            
             nuevo_registro = {
                 "marca": marca,
                 "evento": evento_nom,
+                "tipo": tipo_e,
                 "cliente": cliente,
                 "telefono": telefono,
                 "direccion": direccion,
                 "fecha": str(fecha_e),
                 "hora_contrato": hora_c,
                 "hora_citacion": hora_cit,
-                "costo_total": costo_t,
+                "costo_total": costo_final,
                 "monto_adelanto": monto_a,
-                "tipo": tipo_e
+                "descripcion": f"Alquiler: {desc_alquiler} (S/ {monto_alquiler})" if agregar_alquiler and desc_alquiler else ""
             }
             supabase.table("eventos").insert(nuevo_registro).execute()
             st.success("¡Evento registrado con éxito!")
