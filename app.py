@@ -23,6 +23,8 @@ supabase = init_supabase()
 
 # Lista de animadoras actualizada
 OPCIONES_ANIMADORAS = ["Madai", "Martha", "Eusy", "Carla", "Lucia", "Ninguno", "Otro Animador"]
+# Opciones de duración para shows (1.5h a 3h de media en media hora)
+OPCIONES_DURACION = ["1.5 horas", "2 horas", "2.5 horas", "3 horas"]
 
 # ==============================================================================
 # 2. CARGA DE FONDO E IMÁGENES EN BASE64
@@ -209,15 +211,17 @@ def formatear_fecha_larga(fecha_str):
 def calcular_hora_fin(hora_inicio_str, duracion_str="2 horas"):
     try:
         dt_inicio = datetime.strptime(hora_inicio_str.strip(), "%I:%M %p")
-        horas_add = 2
-        if "1" in duracion_str:
-            horas_add = 1
+        minutos_add = 120
+        if "1.5" in duracion_str:
+            minutos_add = 90
+        elif "2.5" in duracion_str:
+            minutos_add = 150
         elif "3" in duracion_str:
-            horas_add = 3
-        elif "4" in duracion_str:
-            horas_add = 4
+            minutos_add = 180
+        elif "1" in duracion_str:
+            minutos_add = 60
         
-        dt_fin = dt_inicio + timedelta(hours=horas_add)
+        dt_fin = dt_inicio + timedelta(minutes=minutos_add)
         return f"{dt_inicio.strftime('%I:%M %p')} a {dt_fin.strftime('%I:%M %p')}"
     except Exception:
         return f"{hora_inicio_str} ({duracion_str})"
@@ -277,8 +281,10 @@ def modal_asignar_personal(evento):
         # 4. Staff
         staff_val = st.text_input("🛠️ **Staff**", value=datos_p.get("staff", ""))
 
-        # Duración del show
-        duracion_val = st.selectbox("⏱️ **Duración del Show**", ["1 hora", "2 horas", "3 horas", "4 horas"], index=1)
+        # Duración del show (1.5h a 3h de media en media hora)
+        duracion_guardada = datos_p.get("duracion", "2 horas")
+        idx_dur = OPCIONES_DURACION.index(duracion_guardada) if duracion_guardada in OPCIONES_DURACION else 1
+        duracion_val = st.selectbox("⏱️ **Duración del Show**", OPCIONES_DURACION, index=idx_dur)
 
         # 5. Observaciones
         obs_val = st.text_area("📝 **Observaciones / Notas**", value=datos_p.get("detalles", ""))
