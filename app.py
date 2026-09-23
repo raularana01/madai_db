@@ -3,6 +3,7 @@ from datetime import date, datetime, timedelta
 from supabase import create_client, Client
 import base64
 import os
+import urllib.parse
 
 # ==============================================================================
 # 1. CONFIGURACIÓN DE PÁGINA Y CONEXIÓN SUPABASE
@@ -237,6 +238,54 @@ def calcular_hora_fin(hora_inicio_str, duracion_str="2 horas"):
 def obtener_eventos():
     res = supabase.table("eventos").select("*, personal(*)").execute()
     return res.data if res.data else []
+
+def generar_texto_ficha(ev):
+    """Genera el texto estructurado para WhatsApp de un evento individual"""
+    personal_lista = ev.get("personal", [])
+    p_data = personal_lista[0] if isinstance(personal_lista, list) and len(personal_lista) > 0 else (personal_lista if isinstance(personal_lista, dict) else {})
+    
+    marca = str(ev.get("marca", "madai")).upper()
+    tipo = str(ev.get("tipo", "Show"))
+    fecha = formatear_fecha_larga(ev.get("fecha", ""))
+    hora = ev.get("hora_contrato", "04:30 PM")
+    cliente = ev.get("cliente", "N/A")
+    evento_nombre = ev.get("evento", "Sin Nombre")
+    direccion = ev.get("direccion", "N/A")
+    
+    costo = float(ev.get('costo_total', 0) or 0)
+    adelanto = float(ev.get('monto_adelanto', 0) or 0)
+    pendiente = costo - adelanto
+
+    animador = p_data.get("animador", "No asignada")
+    dalinas = p_data.get("dalinas", "Ninguna")
+    dj = p_data.get("dj", "No asignado")
+    staff = p_data.get("staff", "No asignado")
+    duracion = p_data.get("duracion", "2 horas")
+    observaciones = p_data.get("detalles", "")
+
+    texto = (
+        f"🏷️ *MARCA: {marca}*\n"
+        f"🎉 *EVENTO:* {evento_nombre} ({tipo})\n"
+        f"📅 *FECHA:* {fecha}\n"
+        f"⏰ *HORA:* {hora}\n"
+        f"👤 *CLIENTE:* {cliente}\n"
+    )
+    if "LOCAL" not in marca:
+        texto += f"📍 *DIRECCIÓN:* {direccion}\n"
+    
+    texto += (
+        f"👥 *PERSONAL ASIGNADO:*\n"
+        f"  • Animadora: {animador}\n"
+        f"  • Dalinas: {dalinas}\n"
+        f"  • DJ: {dj}\n"
+        f"  • Staff: {staff}\n"
+        f"  • Duración: {duracion}\n"
+    )
+    if observaciones:
+        texto += f"📝 *Notas:* {observaciones}\n"
+        
+    texto += f"💵 *Total:* S/ {costo:.0f} | 💳 *Adelanto:* S/ {adelanto:.0f} | 💰 *Pendiente:* S/ {pendiente:.0f}\n"
+    return texto
 
 # ==============================================================================
 # 5. MODALES DECLARADOS GLOBALMENTE (SIN ANIDAMIENTO)
@@ -529,8 +578,8 @@ def renderizar_lista_eventos(lista_eventos, key_prefix="evt"):
                 }}
 
                 div.st-key-{key_prefix}_event_card_{ev['id']} [data-testid="stHorizontalBlock"] {{
-                    gap: 1rem !important;
-                    padding: 0 14px !important;
+                    gap: 0.5rem !important;
+                    padding: 0 10px !important;
                     margin-top: 2px !important;
                 }}
 
@@ -538,6 +587,8 @@ def renderizar_lista_eventos(lista_eventos, key_prefix="evt"):
                     width: 100% !important;
                     border-radius: 7px !important;
                     margin: 0 !important;
+                    font-size: 0.85rem !important;
+                    padding: 6px 4px !important;
                 }}
                 </style>
             """, unsafe_allow_html=True)
@@ -545,25 +596,33 @@ def renderizar_lista_eventos(lista_eventos, key_prefix="evt"):
             with st.container(key=f"{key_prefix}_event_card_{ev['id']}"):
                 st.markdown(html_tarjeta, unsafe_allow_html=True)
 
-                if es_local and not contrato_show:
-                    if st.button("📋 Ver Ficha", key=f"{key_prefix}_btn_ver_{ev['id']}", use_container_width=True):
-                        st.session_state["ver_ficha_id"] = ev["id"]
-                        st.rerun()
-                else:
-                    if not tiene_personal:
-                        col_btn1, col_btn2 = st.columns(2)
-                        with col_btn1:
-                            if st.button("👤 Asignar Personal", key=f"{key_prefix}_btn_pers_{ev['id']}", use_container_width=True):
-                                st.session_state["editar_personal_id"] = ev["id"]
-                                st.rerun()
-                        with col_btn2:
-                            if st.button("📋 Ver Ficha", key=f"{key_prefix}_btn_ver_{ev['id']}", use_container_width=True):
-                                st.session_state["ver_ficha_id"] = ev["id"]
-                                st.rerun()
-                    else:
+                # Botones de acción organizados por columnas
+                col_b1, col_b2 = st.columns(2)
+                
+                with col_b1:
+                    if es_local and not contrato_show:
                         if st.button("📋 Ver Ficha", key=f"{key_prefix}_btn_ver_{ev['id']}", use_container_width=True):
                             st.session_state["ver_ficha_id"] = ev["id"]
                             st.rerun()
+                    else:
+                        if not tiene_personal:
+                            if st.button("👤 Asignar", key=f"{key_prefix}_btn_pers_{ev['id']}", use_container_width=True):
+                                st.session_state["editar_personal_id"] = ev["id"]
+                                st.rerun()
+                        else:
+                            if st.button("📋 Ver Ficha", key=f"{key_prefix}_btn_ver_{ev['id']}", use_container_width=True):
+                                st.session_state["ver_ficha_id"] = ev["id"]
+                                st.rerun()
+
+                with col_b2:
+                    texto_wsp = generar_texto_ficha(ev)
+                    url_wsp = f"https://wa.me/?text={urllib.parse.quote(texto_wsp)}"
+                    st.markdown(
+                        f'<a href="{url_wsp}" target="_blank" style="text-decoration: none;">'
+                        f'<button style="width: 100%; background-color: #25D366; color: white; border: none; padding: 6px 4px; border-radius: 7px; font-weight: bold; font-size: 0.85rem; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">💬 WhatsApp</button>'
+                        f'</a>',
+                        unsafe_allow_html=True
+                    )
 
 # ==============================================================================
 # 7. CABECERA ALINEADA EN UNA FILA (LOGO + TÍTULO "MADAI")
@@ -580,7 +639,7 @@ st.markdown(f"""
 # ==============================================================================
 # 8. NAVEGACIÓN COMPACTA Y SIN ESPACIOS
 # ==============================================================================
-tabs = ["HOY", "PROX 3 DIAS", "REGISTRO"]
+tabs = ["HOY", "DÍA SIGUIENTE", "REGISTRO"]
 
 if "tab_activa" not in st.session_state:
     st.session_state["tab_activa"] = tabs[0]
@@ -603,39 +662,51 @@ if tab_seleccionada == "HOY":
     hoy_str = str(date.today())
     eventos_todos = obtener_eventos()
     eventos_hoy = [e for e in eventos_todos if str(e.get("fecha")) == hoy_str]
+
+    # Botón para enviar todas las fichas de hoy en un solo mensaje de WhatsApp
+    if eventos_hoy:
+        texto_masivo = f"📋 *RESUMEN DE EVENTOS PARA HOY* ({formatear_fecha_larga(hoy_str)})\n\n"
+        for idx, ev_m in enumerate(eventos_hoy, 1):
+            texto_masivo += f"--- *EVENTO {idx}* ---\n" + generar_texto_ficha(ev_m) + "\n"
+        
+        url_masivo = f"https://wa.me/?text={urllib.parse.quote(texto_masivo)}"
+        st.markdown(
+            f'<a href="{url_masivo}" target="_blank" style="text-decoration: none;">'
+            f'<button style="width: 100%; background-color: #25D366; color: white; border: none; padding: 10px; border-radius: 8px; font-weight: bold; font-size: 1rem; cursor: pointer; margin-bottom: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.15);">📤 Enviar TODAS las fichas de hoy al WhatsApp Grupal</button>'
+            f'</a>',
+            unsafe_allow_html=True
+        )
+
     renderizar_lista_eventos(eventos_hoy, key_prefix="hoy")
 
 # ------------------------------------------------------------------------------
-# PESTAÑA 2: PROX 3 DIAS
+# PESTAÑA 2: DÍA SIGUIENTE
 # ------------------------------------------------------------------------------
-elif tab_seleccionada == "PROX 3 DIAS":
-    st.write("### 📆 Próximos Eventos")
-    hoy = date.today()
-    limite_3_dias = hoy + timedelta(days=3)
+elif tab_seleccionada == "DÍA SIGUIENTE":
+    st.write("### 📆 Eventos del Día Siguiente")
+    dia_siguiente = date.today() + timedelta(days=1)
+    dia_sig_str = str(dia_siguiente)
     
-    col_f1, col_f2 = st.columns([1, 2])
-    with col_f1:
-        fecha_filtrada = st.date_input("🔎 **Filtrar por fecha específica:**", value=None)
-
     eventos_todos = obtener_eventos()
+    eventos_sig = [e for e in eventos_todos if str(e.get("fecha")) == dia_sig_str]
+    
+    st.write(f"Mostrando eventos programados para mañana: **{formatear_fecha_larga(dia_sig_str)}**")
 
-    if fecha_filtrada:
-        str_f = str(fecha_filtrada)
-        eventos_filtrados = [ev for ev in eventos_todos if str(ev.get("fecha")) == str_f]
-        st.write(f"Mostrando resultados para: **{formatear_fecha_larga(str_f)}**")
-    else:
-        eventos_filtrados = []
-        for ev in eventos_todos:
-            f_str = str(ev.get("fecha"))
-            try:
-                f_dt = datetime.strptime(f_str, "%Y-%m-%d").date()
-                if hoy <= f_dt <= limite_3_dias:
-                    eventos_filtrados.append(ev)
-            except ValueError:
-                pass
-        st.write(f"Mostrando eventos programados desde hoy **{hoy.strftime('%d/%m/%Y')}** hasta **{limite_3_dias.strftime('%d/%m/%Y')}**")
+    # Botón para enviar todas las fichas del día siguiente juntas
+    if eventos_sig:
+        texto_masivo_sig = f"📋 *RESUMEN DE EVENTOS PARA MAÑANA* ({formatear_fecha_larga(dia_sig_str)})\n\n"
+        for idx, ev_s in enumerate(eventos_sig, 1):
+            texto_masivo_sig += f"--- *EVENTO {idx}* ---\n" + generar_texto_ficha(ev_s) + "\n"
+        
+        url_masivo_sig = f"https://wa.me/?text={urllib.parse.quote(texto_masivo_sig)}"
+        st.markdown(
+            f'<a href="{url_masivo_sig}" target="_blank" style="text-decoration: none;">'
+            f'<button style="width: 100%; background-color: #25D366; color: white; border: none; padding: 10px; border-radius: 8px; font-weight: bold; font-size: 1rem; cursor: pointer; margin-bottom: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.15);">📤 Enviar TODAS las fichas de mañana al WhatsApp Grupal</button>'
+            f'</a>',
+            unsafe_allow_html=True
+        )
 
-    renderizar_lista_eventos(eventos_filtrados, key_prefix="prox")
+    renderizar_lista_eventos(eventos_sig, key_prefix="sig")
 
 # ------------------------------------------------------------------------------
 # PESTAÑA 3: REGISTRO
