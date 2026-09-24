@@ -163,25 +163,6 @@ def generar_texto_ficha(ev):
     texto += f"💵 *Total:* S/ {costo:.0f} | 💳 *Adelanto:* S/ {adelanto:.0f} | 💰 *Pendiente:* S/ {pendiente:.0f}\n"
     return texto
 
-def generar_texto_alquiler(alq):
-    fecha = formatear_fecha_larga(alq.get("fecha", ""))
-    costo = float(alq.get('costo_total', 0) or 0)
-    adelanto = float(alq.get('monto_adelanto', 0) or 0)
-    pendiente = costo - adelanto
-
-    texto = (
-        f"🛋️ *ALQUILER DE MOBILIARIO / PRODUCTOS*\n"
-        f"📅 *FECHA DE ENTREGA:* {fecha}\n"
-        f"⏰ *HORA:* {alq.get('hora_entrega', 'N/A')}\n"
-        f"👤 *CLIENTE:* {alq.get('cliente', 'N/A')} | 📱 *Tel:* {alq.get('telefono', 'N/A')}\n"
-    )
-    if alq.get("direccion"):
-        texto += f"📍 *DIRECCIÓN:* {alq.get('direccion')}\n"
-    
-    texto += f"📦 *ITEMS / PRODUCTOS:*\n{alq.get('items', 'N/A')}\n"
-    texto += f"💵 *Total:* S/ {costo:.0f} | 💳 *Adelanto:* S/ {adelanto:.0f} | 💰 *Pendiente:* S/ {pendiente:.0f}\n"
-    return texto
-
 # ==============================================================================
 # 5. MODALES
 # ==============================================================================
@@ -390,9 +371,19 @@ def renderizar_lista_alquileres(lista_alquileres, key_prefix="alq"):
     return seleccionados
 
 # ==============================================================================
-# 7. INTERFAZ PRINCIPAL
+# 7. INTERFAZ PRINCIPAL Y DISPARADORES DE MODALES
 # ==============================================================================
 st.markdown(f'<div class="header-container"><img src="data:image/jpeg;base64,{logo_b64}" class="logo-inline"><div class="title-inline">MADAI</div></div>', unsafe_allow_html=True)
+
+eventos_todos = obtener_eventos()
+alquileres_todos = obtener_alquileres()
+
+# Disparadores de modales colocados de forma segura dentro del flujo principal
+if st.session_state["ver_ficha_id"]:
+    dialog_ver_ficha(next((e for e in eventos_todos if e["id"] == st.session_state["ver_ficha_id"]), {}))
+
+if st.session_state["editar_personal_id"]:
+    dialog_asignar_personal(next((e for e in eventos_todos if e["id"] == st.session_state["editar_personal_id"]), {}))
 
 tabs = ["HOY", "DÍA SIGUIENTE", "ALQUILERES", "REGISTRO"]
 
@@ -403,9 +394,6 @@ if tab_seleccionada != st.session_state["tab_activa"]:
     st.session_state["editar_personal_id"] = None
     st.session_state["ver_ficha_id"] = None
     st.rerun()
-
-eventos_todos = obtener_eventos()
-alquileres_todos = obtener_alquileres()
 
 if tab_seleccionada == "HOY":
     st.write("### 📅 Eventos del Día de Hoy")
@@ -493,12 +481,3 @@ elif tab_seleccionada == "REGISTRO":
         st.cache_data.clear()
         st.session_state["tab_activa"] = "HOY"
         st.rerun()
-
-# ==============================================================================
-# 8. DISPARADORES DE MODALES
-# ==============================================================================
-if st.session_state["ver_ficha_id"]:
-    dialog_ver_ficha(next((e for e in eventos_todos if e["id"] == st.session_state["ver_ficha_id"]), {}))
-
-if st.session_state["editar_personal_id"]:
-    dialog_asignar_personal(next((e for e in eventos_todos if e["id"] == st.session_state["editar_personal_id"]), {}))
