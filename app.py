@@ -436,7 +436,7 @@ def renderizar_lista_eventos(lista_eventos, key_prefix="evt"):
 # ==============================================================================
 st.markdown(f'<div class="header-container"><img src="data:image/jpeg;base64,{logo_b64}" class="logo-inline"><div class="title-inline">MADAI</div></div>', unsafe_allow_html=True)
 
-tabs = ["HOY", "DÍA SIGUIENTE", "ALQUILER", "REGISTRO"]
+tabs = ["HOY", "PRÓXIMOS EVENTOS", "ALQUILER", "REGISTRO"]
 
 tab_seleccionada = st.radio("Navegación", tabs, index=tabs.index(st.session_state["tab_activa"]), horizontal=True, label_visibility="collapsed")
 
@@ -450,22 +450,61 @@ eventos_todos = obtener_eventos()
 
 if tab_seleccionada == "HOY":
     st.write("### 📅 Eventos del Día de Hoy")
-    hoy_str = str(date.today())
-    sel_hoy = renderizar_lista_eventos([e for e in eventos_todos if str(e.get("fecha")) == hoy_str], key_prefix="hoy")
+    hoy = date.today()
+    
+    # Opción para ver eventos pasados (hasta 7 días atrás)
+    ver_pasados = st.checkbox("⬅️ Ver eventos pasados (hasta 7 días atrás)")
+    
+    if ver_pasados:
+        hace_7_dias = hoy - timedelta(days=7)
+        eventos_filtrados = [
+            e for e in eventos_todos 
+            if e.get("fecha") and hace_7_dias <= datetime.strptime(str(e.get("fecha")), "%Y-%m-%d").date() <= hoy
+        ]
+        # Ordenar los eventos cronológicamente
+        eventos_filtrados.sort(key=lambda x: str(x.get("fecha")))
+    else:
+        hoy_str = str(hoy)
+        eventos_filtrados = [e for e in eventos_todos if str(e.get("fecha")) == hoy_str]
+
+    sel_hoy = renderizar_lista_eventos(eventos_filtrados, key_prefix="hoy")
 
     if sel_hoy:
-        texto_masivo = f"📋 *RESUMEN DE EVENTOS SELECCIONADOS* ({formatear_fecha_larga(hoy_str)})\n\n"
-        for i, ev_m in enumerate(sel_hoy, 1): texto_masivo += f"--- *EVENTO {i}* ---\n" + generar_texto_ficha(ev_m) + "\n"
+        texto_masivo = f"📋 *RESUMEN DE EVENTOS SELECCIONADOS*\n\n"
+        for i, ev_m in enumerate(sel_hoy, 1): 
+            texto_masivo += f"--- *EVENTO {i}* ---\n" + generar_texto_ficha(ev_m) + "\n"
         st.markdown(f'<a href="https://wa.me/?text={urllib.parse.quote(texto_masivo)}" target="_blank"><button style="width: 100%; background-color: #25D366; color: white; border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer;">📤 Enviar Fichas Seleccionadas al WhatsApp Grupal</button></a>', unsafe_allow_html=True)
 
-elif tab_seleccionada == "DÍA SIGUIENTE":
-    st.write("### 📆 Eventos del Día Siguiente")
-    sig_str = str(date.today() + timedelta(days=1))
-    sel_sig = renderizar_lista_eventos([e for e in eventos_todos if str(e.get("fecha")) == sig_str], key_prefix="sig")
+elif tab_seleccionada == "PRÓXIMOS EVENTOS":
+    st.write("### 📆 Próximos Eventos y Búsqueda por Fecha")
+    
+    hoy = date.today()
+    limite_30_dias = hoy + timedelta(days=30)
+
+    # Opción para buscar por fecha específica dentro de la misma pestaña
+    usar_fecha_especifica = st.checkbox("🔍 Buscar show por fecha específica")
+    
+    if usar_fecha_especifica:
+        fecha_busqueda = st.date_input("Selecciona la fecha:", value=hoy, key="fecha_busqueda_input")
+        eventos_filtrados = [e for e in eventos_todos if str(e.get("fecha")) == str(fecha_busqueda)]
+        titulo_seccion = f"Eventos para el {formatear_fecha_larga(fecha_busqueda)}"
+    else:
+        # Eventos desde hoy hasta los próximos 30 días
+        eventos_filtrados = [
+            e for e in eventos_todos 
+            if e.get("fecha") and hoy <= datetime.strptime(str(e.get("fecha")), "%Y-%m-%d").date() <= limite_30_dias
+        ]
+        # Ordenar cronológicamente
+        eventos_filtrados.sort(key=lambda x: str(x.get("fecha")))
+        titulo_seccion = "Eventos de los próximos 30 días (incluye hoy)"
+
+    st.write(f"**{titulo_seccion}**")
+    sel_sig = renderizar_lista_eventos(eventos_filtrados, key_prefix="prox")
 
     if sel_sig:
-        texto_masivo_sig = f"📋 *RESUMEN DE EVENTOS PARA MAÑANA* ({formatear_fecha_larga(sig_str)})\n\n"
-        for i, ev_s in enumerate(sel_sig, 1): texto_masivo_sig += f"--- *EVENTO {i}* ---\n" + generar_texto_ficha(ev_s) + "\n"
+        texto_masivo_sig = f"📋 *RESUMEN DE EVENTOS SELECCIONADOS*\n\n"
+        for i, ev_s in enumerate(sel_sig, 1): 
+            texto_masivo_sig += f"--- *EVENTO {i}* ---\n" + generar_texto_ficha(ev_s) + "\n"
         st.markdown(f'<a href="https://wa.me/?text={urllib.parse.quote(texto_masivo_sig)}" target="_blank"><button style="width: 100%; background-color: #25D366; color: white; border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer;">📤 Enviar Fichas Seleccionadas al WhatsApp Grupal</button></a>', unsafe_allow_html=True)
 
 elif tab_seleccionada == "ALQUILER":
