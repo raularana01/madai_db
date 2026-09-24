@@ -107,7 +107,7 @@ st.markdown(f"""
 def formatear_fecha_larga(fecha_str):
     if not fecha_str: return "Sin fecha"
     try:
-        dt = datetime.strptime(str(fecha_str), "%Y-%m-%d")
+        dt = datetime.strptime(str(fecha_str)[:10], "%Y-%m-%d")
         dias = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
         meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
         return f"{dias[dt.weekday()]} {dt.day} de {meses[dt.month - 1]} de {dt.year}"
@@ -348,7 +348,7 @@ eventos_todos = obtener_eventos()
 if tab_seleccionada == "HOY":
     st.write("### 📅 Eventos del Día de Hoy")
     hoy_str = str(date.today())
-    sel_hoy = renderizar_lista_eventos([e for e in eventos_todos if str(e.get("fecha")) == hoy_str], key_prefix="hoy")
+    sel_hoy = renderizar_lista_eventos([e for e in eventos_todos if str(e.get("fecha"))[:10] == hoy_str], key_prefix="hoy")
 
     if sel_hoy:
         texto_masivo = f"📋 *RESUMEN DE EVENTOS SELECCIONADOS* ({formatear_fecha_larga(hoy_str)})\n\n"
@@ -359,7 +359,7 @@ if tab_seleccionada == "HOY":
 elif tab_seleccionada == "DÍA SIGUIENTE":
     st.write("### 📆 Eventos del Día Siguiente")
     sig_str = str(date.today() + timedelta(days=1))
-    sel_sig = renderizar_lista_eventos([e for e in eventos_todos if str(e.get("fecha")) == sig_str], key_prefix="sig")
+    sel_sig = renderizar_lista_eventos([e for e in eventos_todos if str(e.get("fecha"))[:10] == sig_str], key_prefix="sig")
 
     if sel_sig:
         texto_masivo_sig = f"📋 *RESUMEN DE EVENTOS PARA MAÑANA* ({formatear_fecha_larga(sig_str)})\n\n"
@@ -383,7 +383,6 @@ elif tab_seleccionada == "REGISTRO":
     with col2:
         hora_c = st.text_input("**Hora**", value="04:30 PM")
         
-        # Opción de alquiler extra antes del monto total
         incluye_alq = st.checkbox("📦 ¿Incluye Alquiler adicional en este evento?")
         detalle_alq = ""
         monto_alq = 0.0
@@ -397,15 +396,19 @@ elif tab_seleccionada == "REGISTRO":
         st.markdown(f"🔴 **Total General:** S/ {costo_total_final:.0f} | 🔴 **Pendiente:** S/ {max(0, costo_total_final - monto_a):.0f}")
 
     if st.button("📌 GUARDAR EVENTO", use_container_width=True):
-        supabase.table("eventos").insert({
-            "marca": marca, "evento": evento_nom, "tipo": tipo_e, "cliente": cliente,
-            "telefono": telefono, "direccion": direccion, "fecha": str(fecha_e),
-            "hora_contrato": hora_c, "costo_total": float(costo_total_final), "monto_adelanto": float(monto_a),
-            "incluye_alquiler": incluye_alq, "detalle_alquiler": detalle_alq, "monto_alquiler": float(monto_alq)
-        }).execute()
-        st.cache_data.clear()
-        st.session_state["tab_activa"] = "HOY"
-        st.rerun()
+        try:
+            supabase.table("eventos").insert({
+                "marca": marca, "evento": evento_nom, "tipo": tipo_e, "cliente": cliente,
+                "telefono": telefono, "direccion": direccion, "fecha": str(fecha_e),
+                "hora_contrato": hora_c, "costo_total": float(costo_total_final), "monto_adelanto": float(monto_a),
+                "incluye_alquiler": incluye_alq, "detalle_alquiler": detalle_alq, "monto_alquiler": float(monto_alq)
+            }).execute()
+            st.cache_data.clear()
+            st.session_state["tab_activa"] = "HOY"
+            st.success("¡Evento guardado con éxito!")
+            st.rerun()
+        except Exception as ex:
+            st.error(f"Error al guardar en Supabase. Asegúrate de haber creado las columnas 'incluye_alquiler', 'detalle_alquiler' y 'monto_alquiler' en tu base de datos. Detalle: {ex}")
 
 elif tab_seleccionada == "ALQUILERES":
     st.write("### 📦 Registro de Alquileres Independientes")
@@ -440,27 +443,30 @@ elif tab_seleccionada == "ALQUILERES":
         st.markdown(f"💵 **Total Alquiler:** S/ {suma_items:.0f} | 🔴 **Pendiente:** S/ {max(0, suma_items - monto_adelanto_alq):.0f}")
 
     if st.button("📌 GUARDAR ALQUILER", use_container_width=True):
-        detalle_completo_items = " - ".join(items_lista)
-        supabase.table("eventos").insert({
-            "marca": "local", 
-            "evento": f"Alquiler: {detalle_completo_items[:40]}...", 
-            "tipo": "Alquiler", 
-            "cliente": cliente_alq,
-            "telefono": telefono_alq, 
-            "direccion": direccion_alq if direccion_alq else "Local MADAI", 
-            "fecha": str(fecha_alq),
-            "hora_contrato": hora_alq, 
-            "costo_total": float(suma_items), 
-            "monto_adelanto": float(monto_adelanto_alq),
-            "incluye_alquiler": True,
-            "detalle_alquiler": detalle_completo_items,
-            "monto_alquiler": float(suma_items)
-        }).execute()
-        st.cache_data.clear()
-        st.session_state["num_items_alquiler"] = 1
-        st.session_state["tab_activa"] = "HOY"
-        st.success("¡Alquiler registrado correctamente!")
-        st.rerun()
+        try:
+            detalle_completo_items = " - ".join(items_lista)
+            supabase.table("eventos").insert({
+                "marca": "local", 
+                "evento": f"Alquiler: {detalle_completo_items[:40]}...", 
+                "tipo": "Alquiler", 
+                "cliente": cliente_alq,
+                "telefono": telefono_alq, 
+                "direccion": direccion_alq if direccion_alq else "Local MADAI", 
+                "fecha": str(fecha_alq),
+                "hora_contrato": hora_alq, 
+                "costo_total": float(suma_items), 
+                "monto_adelanto": float(monto_adelanto_alq),
+                "incluye_alquiler": True,
+                "detalle_alquiler": detalle_completo_items,
+                "monto_alquiler": float(suma_items)
+            }).execute()
+            st.cache_data.clear()
+            st.session_state["num_items_alquiler"] = 1
+            st.session_state["tab_activa"] = "HOY"
+            st.success("¡Alquiler registrado correctamente!")
+            st.rerun()
+        except Exception as ex:
+            st.error(f"Error al guardar el alquiler. Asegúrate de haber agregado las columnas de alquiler en Supabase. Detalle: {ex}")
 
 # ==============================================================================
 # 8. DISPARADORES DE MODALES
