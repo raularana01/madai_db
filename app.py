@@ -184,27 +184,8 @@ def generar_texto_ficha(ev):
     texto += f"💵 *Total:* S/ {costo:.0f} | 💳 *Adelanto:* S/ {adelanto:.0f} | 💰 *Pendiente:* S/ {pendiente:.0f}\n"
     return texto
 
-def generar_texto_alquiler(alq):
-    fecha = formatear_fecha_larga(alq.get("fecha", ""))
-    costo = float(alq.get('costo_total', 0) or 0)
-    adelanto = float(alq.get('monto_adelanto', 0) or 0)
-    pendiente = costo - adelanto
-
-    texto = (
-        f"📦 *ALQUILER DE MOBILIARIO / PRODUCTOS*\n"
-        f"📅 *FECHA DE ENTREGA:* {fecha}\n"
-        f"⏰ *HORA:* {alq.get('hora_entrega', 'N/A')}\n"
-        f"👤 *CLIENTE:* {alq.get('cliente', 'N/A')} | 📱 *Tel:* {alq.get('telefono', 'N/A')}\n"
-    )
-    if alq.get("direccion"):
-        texto += f"📍 *DIRECCIÓN:* {alq.get('direccion')}\n"
-    
-    texto += f"🛍️ *ITEMS:*\n{alq.get('items', 'N/A')}\n"
-    texto += f"💵 *Total:* S/ {costo:.0f} | 💳 *Adelanto:* S/ {adelanto:.0f} | 💰 *Pendiente:* S/ {pendiente:.0f}\n"
-    return texto
-
 # ==============================================================================
-# 5. MODALES
+# 5. MODALES (CON KEYS ÚNICAS PARA EVITAR ERRORES)
 # ==============================================================================
 @st.dialog("👤 Asignar / Editar Personal")
 def dialog_asignar_personal(evento):
@@ -217,26 +198,33 @@ def dialog_asignar_personal(evento):
     anim_guardada = datos_p.get("animador", "")
     idx_anim = OPCIONES_ANIMADORAS.index(anim_guardada) if anim_guardada in OPCIONES_ANIMADORAS else (OPCIONES_ANIMADORAS.index("Otro Animador") if anim_guardada else 0)
 
-    anim_sel = st.selectbox("🎤 **Animadora**", OPCIONES_ANIMADORAS, index=idx_anim)
-    animador_final = st.text_input("Escribe el nombre:", value=anim_guardada if anim_guardada not in OPCIONES_ANIMADORAS else "") if anim_sel == "Otro Animador" else anim_sel
+    # Se agregan keys dinámicas únicas
+    anim_sel = st.selectbox("🎤 **Animadora**", OPCIONES_ANIMADORAS, index=idx_anim, key=f"anim_sel_{e_id}")
+    
+    if anim_sel == "Otro Animador":
+        animador_final = st.text_input("Escribe el nombre:", value=anim_guardada if anim_guardada not in OPCIONES_ANIMADORAS else "", key=f"anim_text_{e_id}")
+    else:
+        animador_final = anim_sel
 
-    cant_dalinas = st.number_input("Número de Dalinas", min_value=0, max_value=20, value=int(datos_p.get("num_dalinas", 1) or 1))
+    cant_dalinas = st.number_input("Número de Dalinas", min_value=0, max_value=20, value=int(datos_p.get("num_dalinas", 1) or 1), key=f"num_dal_{e_id}")
     lista_dalinas_prev = [d.strip() for d in datos_p.get("dalinas", "").split(",") if d.strip()]
     
     nombres_dalinas = []
     for i in range(int(cant_dalinas)):
         val_prev = lista_dalinas_prev[i] if i < len(lista_dalinas_prev) else ""
-        nom_d = st.text_input(f"Nombre Dalina {i+1}", value=val_prev, key=f"d_in_{e_id}_{i}")
+        nom_d = st.text_input(f"Nombre Dalina {i+1}", value=val_prev, key=f"dal_nom_{e_id}_{i}")
         if nom_d.strip(): nombres_dalinas.append(nom_d.strip())
 
-    dj_val = st.text_input("🎧 **DJ**", value=datos_p.get("dj", ""))
-    staff_val = st.text_input("🛠️ **Staff**", value=datos_p.get("staff", ""))
+    dj_val = st.text_input("🎧 **DJ**", value=datos_p.get("dj", ""), key=f"dj_val_{e_id}")
+    staff_val = st.text_input("🛠️ **Staff**", value=datos_p.get("staff", ""), key=f"staff_val_{e_id}")
     
     duracion_guardada = datos_p.get("duracion", "2 horas")
-    duracion_val = st.selectbox("⏱️ **Duración**", OPCIONES_DURACION, index=OPCIONES_DURACION.index(duracion_guardada) if duracion_guardada in OPCIONES_DURACION else 1)
-    obs_val = st.text_area("📝 **Observaciones**", value=datos_p.get("detalles", ""))
+    idx_dur = OPCIONES_DURACION.index(duracion_guardada) if duracion_guardada in OPCIONES_DURACION else 1
+    duracion_val = st.selectbox("⏱️ **Duración**", OPCIONES_DURACION, index=idx_dur, key=f"dur_sel_{e_id}")
+    
+    obs_val = st.text_area("📝 **Observaciones**", value=datos_p.get("detalles", ""), key=f"obs_val_{e_id}")
 
-    if st.button("💾 Guardar Personal", use_container_width=True, type="primary"):
+    if st.button("💾 Guardar Personal", use_container_width=True, type="primary", key=f"btn_save_pers_{e_id}"):
         payload = {
             "evento_id": e_id, "animador": animador_final, "dalinas": ", ".join(nombres_dalinas),
             "num_dalinas": int(cant_dalinas), "dj": dj_val, "staff": staff_val, "duracion": duracion_val, "detalles": obs_val
@@ -264,7 +252,6 @@ def dialog_ver_ficha(evento):
     pendiente = costo - adelanto
     marca = str(ev.get("marca", "madai")).lower()
     
-    # Asignación de colores armónicos con texto legible según marca
     if marca == "local":
         color_fondo, color_texto = "#1D3557", "#FFFFFF"
     elif marca == "risueña":
@@ -303,7 +290,7 @@ def dialog_ver_ficha(evento):
     st.markdown(f'<div class="data-line" style="margin-top: 8px;">💵 <b>Total General:</b> S/ {costo:.0f} | 💳 <b>Adelanto:</b> S/ {adelanto:.0f} | <b style="color: #D90429;">Pendiente Total: S/ {pendiente:.0f}</b></div>', unsafe_allow_html=True)
     
     if marca != "local" or ev.get("incluye_show"):
-        if st.button("✏️ Modificar Personal", use_container_width=True, key=f"mod_{ev['id']}"):
+        if st.button("✏️ Modificar Personal", use_container_width=True, key=f"mod_btn_ficha_{ev['id']}"):
             st.session_state["ver_ficha_id"] = None
             st.session_state["editar_personal_id"] = ev["id"]
             st.rerun()
@@ -434,7 +421,6 @@ def renderizar_lista_eventos(lista_eventos, key_prefix="evt"):
     return seleccionados
 
 def renderizar_lista_alquileres_lectura(lista_alquileres, key_prefix="alq_lectura"):
-    """Muestra las tarjetas de alquiler de mobiliario exclusivamente en modo lectura dentro de la pestaña principal."""
     if not lista_alquileres:
         return
     
@@ -475,18 +461,24 @@ def renderizar_lista_alquileres_lectura(lista_alquileres, key_prefix="alq_lectur
                 st.markdown(html_tarjeta, unsafe_allow_html=True)
 
 # ==============================================================================
-# 7. INTERFAZ PRINCIPAL Y NAVEGACIÓN
+# 7. LLAMADAS ÚNICAS A LOS DIÁLOGOS
 # ==============================================================================
-st.markdown(f'<div class="header-container"><img src="data:image/jpeg;base64,{logo_b64}" class="logo-inline"><div class="title-inline">MADAI</div></div>', unsafe_allow_html=True)
-
 eventos_todos = obtener_eventos()
 alquileres_todos = obtener_alquileres()
 
-if st.session_state["ver_ficha_id"]:
-    dialog_ver_ficha(next((e for e in eventos_todos if e["id"] == st.session_state["ver_ficha_id"]), {}))
+# Se ubican aquí una ÚNICA VEZ antes del renderizado de los tabs
+if st.session_state.get("ver_ficha_id"):
+    ev_f = next((e for e in eventos_todos if e["id"] == st.session_state["ver_ficha_id"]), None)
+    if ev_f: dialog_ver_ficha(ev_f)
 
-if st.session_state["editar_personal_id"]:
-    dialog_asignar_personal(next((e for e in eventos_todos if e["id"] == st.session_state["editar_personal_id"]), {}))
+if st.session_state.get("editar_personal_id"):
+    ev_p = next((e for e in eventos_todos if e["id"] == st.session_state["editar_personal_id"]), None)
+    if ev_p: dialog_asignar_personal(ev_p)
+
+# ==============================================================================
+# 8. INTERFAZ PRINCIPAL Y NAVEGACIÓN
+# ==============================================================================
+st.markdown(f'<div class="header-container"><img src="data:image/jpeg;base64,{logo_b64}" class="logo-inline"><div class="title-inline">MADAI</div></div>', unsafe_allow_html=True)
 
 tabs = ["HOY", "DÍA SIGUIENTE", "ALQUILERES", "REGISTRO"]
 tab_seleccionada = st.radio("Navegación", tabs, index=tabs.index(st.session_state["tab_activa"]), horizontal=True, label_visibility="collapsed")
@@ -501,11 +493,8 @@ if tab_seleccionada == "HOY":
     st.write("### 📅 Eventos y Alquileres del Día de Hoy")
     hoy_str = str(date.today())
     
-    # 1. Mostrar tarjetas de alquiler en modo lectura correspondientes a hoy
     renderizar_lista_alquileres_lectura([a for a in alquileres_todos if str(a.get("fecha")) == hoy_str], key_prefix="hoy_alq")
-    
     st.markdown("---")
-    # 2. Mostrar eventos de hoy
     sel_hoy = renderizar_lista_eventos([e for e in eventos_todos if str(e.get("fecha")) == hoy_str], key_prefix="hoy")
 
     if sel_hoy:
@@ -517,11 +506,8 @@ elif tab_seleccionada == "DÍA SIGUIENTE":
     st.write("### 📆 Eventos y Alquileres del Día Siguiente")
     sig_str = str(date.today() + timedelta(days=1))
     
-    # 1. Mostrar alquileres en modo lectura para mañana
     renderizar_lista_alquileres_lectura([a for a in alquileres_todos if str(a.get("fecha")) == sig_str], key_prefix="sig_alq")
-    
     st.markdown("---")
-    # 2. Mostrar eventos de mañana
     sel_sig = renderizar_lista_eventos([e for e in eventos_todos if str(e.get("fecha")) == sig_str], key_prefix="sig")
 
     if sel_sig:
@@ -535,11 +521,11 @@ elif tab_seleccionada == "ALQUILERES":
     with st.expander("➕ Registrar Nuevo Alquiler de Productos", expanded=True):
         col_a1, col_a2 = st.columns(2)
         with col_a1:
-            alq_cliente = st.text_input("**Nombre del Cliente**", key="alq_cli")
-            alq_tel = st.text_input("**Teléfono**", key="alq_tel")
-            alq_dir = st.text_input("**Dirección (Opcional)**", key="alq_dir")
-            alq_fecha = st.date_input("**Fecha de Entrega**", value=date.today(), key="alq_fec")
-            alq_hora = st.text_input("**Hora de Entrega**", value="10:00 AM", key="alq_hor")
+            alq_cliente = st.text_input("**Nombre del Cliente**", key="alq_cli_reg")
+            alq_tel = st.text_input("**Teléfono**", key="alq_tel_reg")
+            alq_dir = st.text_input("**Dirección (Opcional)**", key="alq_dir_reg")
+            alq_fecha = st.date_input("**Fecha de Entrega**", value=date.today(), key="alq_fec_reg")
+            alq_hora = st.text_input("**Hora de Entrega**", value="10:00 AM", key="alq_hor_reg")
             
         with col_a2:
             st.markdown("**📝 Ingreso de Ítems (Uno por uno)**")
@@ -547,12 +533,11 @@ elif tab_seleccionada == "ALQUILERES":
             with col_it1:
                 nuevo_item = st.text_input("Escribe el producto/ítem:", key="input_nuevo_item", label_visibility="collapsed", placeholder="Ej: Mesa vestida, silla...")
             with col_it2:
-                if st.button("➕ Agregar"):
+                if st.button("➕ Agregar", key="btn_add_item"):
                     if nuevo_item.strip():
                         st.session_state["lista_items_alquiler"].append(nuevo_item.strip())
                         st.rerun()
             
-            # Mostrar la lista de ítems temporales
             if st.session_state["lista_items_alquiler"]:
                 for idx, item in enumerate(st.session_state["lista_items_alquiler"]):
                     ci1, ci2 = st.columns([4, 1])
@@ -564,16 +549,15 @@ elif tab_seleccionada == "ALQUILERES":
                 st.caption("Aún no hay ítems agregados en la lista.")
 
         st.markdown("---")
-        # MONTO TOTAL UBICADO RECIÉN ABAJO DE LOS ÍTEMS
         col_m1, col_m2 = st.columns(2)
         with col_m1:
-            alq_costo = st.number_input("**Monto Total del Alquiler (S/)**", min_value=0, step=10, value=150, key="alq_cos")
+            alq_costo = st.number_input("**Monto Total del Alquiler (S/)**", min_value=0, step=10, value=150, key="alq_cos_reg")
         with col_m2:
-            alq_adelanto = st.number_input("**Adelanto (S/)**", min_value=0, step=10, value=50, key="alq_ade")
+            alq_adelanto = st.number_input("**Adelanto (S/)**", min_value=0, step=10, value=50, key="alq_ade_reg")
         
         st.markdown(f"🔴 **Saldo Pendiente:** S/ {max(0, alq_costo - alq_adelanto):.0f}")
 
-        if st.button("📌 GUARDAR ALQUILER", use_container_width=True, key="btn_guardar_alq"):
+        if st.button("📌 GUARDAR ALQUILER", use_container_width=True, key="btn_guardar_alq_final"):
             if alq_cliente and st.session_state["lista_items_alquiler"]:
                 items_texto = ", ".join(st.session_state["lista_items_alquiler"])
                 supabase.table("alquileres").insert({
@@ -592,7 +576,6 @@ elif tab_seleccionada == "ALQUILERES":
     st.write("### 📋 Historial de Alquileres Programados")
     filtro_fecha_alq = st.date_input("Filtrar por fecha de entrega:", value=date.today(), key="filtro_alq_fec")
     
-    # Listado interactivo en la pestaña de alquileres
     alquileres_filtrados = [a for a in alquileres_todos if str(a.get("fecha")) == str(filtro_fecha_alq)]
     if alquileres_filtrados:
         cols_alq = st.columns(2)
@@ -615,33 +598,33 @@ elif tab_seleccionada == "REGISTRO":
     col1, col2 = st.columns(2)
     
     with col1:
-        marca = st.selectbox("**Marca o Tipo**", ["madai", "risueña", "local"])
+        marca = st.selectbox("**Marca o Tipo**", ["madai", "risueña", "local"], key="reg_marca")
         
         if marca == "local":
             evento_nom = "Alquiler de Local MADAI"
             tipo_e = "Alquiler de Local"
         else:
-            evento_nom = st.text_input("**Nombre del Evento**")
-            tipo_e = st.selectbox("**Tipo**", ["Show", "Show + Deco", "Deco"])
+            evento_nom = st.text_input("**Nombre del Evento**", key="reg_ev_nom")
+            tipo_e = st.selectbox("**Tipo**", ["Show", "Show + Deco", "Deco"], key="reg_tipo")
             
-        cliente = st.text_input("**Cliente**")
-        telefono = st.text_input("**Teléfono**")
-        direccion = "Local MADAI" if marca == "local" else st.text_input("**Dirección**")
-        fecha_e = st.date_input("**Fecha**", value=date.today())
+        cliente = st.text_input("**Cliente**", key="reg_cli")
+        telefono = st.text_input("**Teléfono**", key="reg_tel")
+        direccion = "Local MADAI" if marca == "local" else st.text_input("**Dirección**", key="reg_dir")
+        fecha_e = st.date_input("**Fecha**", value=date.today(), key="reg_fec")
     
     with col2:
         if marca == "local":
-            hora_c = st.text_input("**Hora de Inicio Local**", value="10:00 AM")
-            costo_local = st.number_input("**Monto Alquiler Local (S/)**", min_value=0, step=10, value=600)
-            adelanto_local = st.number_input("**Adelanto Local (S/)**", min_value=0, step=10, value=200)
+            hora_c = st.text_input("**Hora de Inicio Local**", value="10:00 AM", key="reg_hor_c_loc")
+            costo_local = st.number_input("**Monto Alquiler Local (S/)**", min_value=0, step=10, value=600, key="reg_cost_loc")
+            adelanto_local = st.number_input("**Adelanto Local (S/)**", min_value=0, step=10, value=200, key="reg_adel_loc")
             
             st.markdown("---")
-            incluye_show = st.checkbox("🎉 ¿Adicionar Show al Local?")
+            incluye_show = st.checkbox("🎉 ¿Adicionar Show al Local?", key="reg_inc_show")
             
             if incluye_show:
-                hora_show = st.text_input("**Hora del Show**", value="04:00 PM")
-                costo_show = st.number_input("**Monto del Show (S/)**", min_value=0, step=10, value=300)
-                adelanto_show = st.number_input("**Adelanto del Show (S/)**", min_value=0, step=10, value=100)
+                hora_show = st.text_input("**Hora del Show**", value="04:00 PM", key="reg_hor_show")
+                costo_show = st.number_input("**Monto del Show (S/)**", min_value=0, step=10, value=300, key="reg_cost_show")
+                adelanto_show = st.number_input("**Adelanto del Show (S/)**", min_value=0, step=10, value=100, key="reg_adel_show")
             else:
                 hora_show = ""
                 costo_show = 0
@@ -651,9 +634,9 @@ elif tab_seleccionada == "REGISTRO":
             monto_a = adelanto_local + adelanto_show
             st.markdown(f"🔴 **Pendiente Total:** S/ {max(0, costo_t - monto_a):.0f}")
         else:
-            hora_c = st.text_input("**Hora**", value="04:30 PM")
-            costo_t = st.number_input("**Monto Total (S/)**", min_value=0, step=10, value=250)
-            monto_a = st.number_input("**Adelanto (S/)**", min_value=0, step=10, value=100)
+            hora_c = st.text_input("**Hora**", value="04:30 PM", key="reg_hor_c")
+            costo_t = st.number_input("**Monto Total (S/)**", min_value=0, step=10, value=250, key="reg_cost_t")
+            monto_a = st.number_input("**Adelanto (S/)**", min_value=0, step=10, value=100, key="reg_adel_t")
             incluye_show = False
             costo_local = 0
             adelanto_local = 0
@@ -662,7 +645,7 @@ elif tab_seleccionada == "REGISTRO":
             hora_show = ""
             st.markdown(f"🔴 **Pendiente:** S/ {max(0, costo_t - monto_a):.0f}")
 
-    if st.button("📌 GUARDAR REGISTRO", use_container_width=True):
+    if st.button("📌 GUARDAR REGISTRO", use_container_width=True, key="btn_guardar_registro_final"):
         payload = {
             "marca": marca, "evento": evento_nom, "tipo": tipo_e, "cliente": cliente,
             "telefono": telefono, "direccion": direccion, "fecha": str(fecha_e),
@@ -678,12 +661,3 @@ elif tab_seleccionada == "REGISTRO":
         st.cache_data.clear()
         st.session_state["tab_activa"] = "HOY"
         st.rerun()
-
-# ==============================================================================
-# 8. DISPARADORES DE MODALES
-# ==============================================================================
-if st.session_state["ver_ficha_id"]:
-    dialog_ver_ficha(next((e for e in eventos_todos if e["id"] == st.session_state["ver_ficha_id"]), {}))
-
-if st.session_state["editar_personal_id"]:
-    dialog_asignar_personal(next((e for e in eventos_todos if e["id"] == st.session_state["editar_personal_id"]), {}))
