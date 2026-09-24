@@ -83,19 +83,14 @@ st.markdown(f"""
         padding: 6px 18px !important; border-radius: 20px !important;
         border: 1.5px solid #7B2CBF !important; font-weight: bold !important; color: #7B2CBF !important;
     }}
-    .card-madai, .card-risuena, .card-alquiler, .card-mobiliario {{ padding: 0 0 12px 0; border-radius: 8px; margin-bottom: 12px; position: relative; }}
     .badge-marca {{
         position: absolute; top: 8px; right: 12px; padding: 3px 10px; border-radius: 12px;
         font-size: 0.75rem; font-weight: bold; color: white; text-transform: uppercase;
     }}
     .badge-madai {{ background-color: #7B2CBF; }}
     .badge-risuena {{ background-color: #2B9348; }}
-    .badge-local {{ background-color: #023E8A; }}
+    .badge-local {{ background-color: #1D3557; }}
     .badge-mobiliario {{ background-color: #0077B6; }}
-    .header-madai {{ background-color: #7B2CBF; color: white; padding: 6px 12px; font-weight: bold; font-size: 0.95rem; border-radius: 4px 4px 0 0; }}
-    .header-risuena {{ background-color: #2B9348; color: white; padding: 6px 12px; font-weight: bold; font-size: 0.95rem; border-radius: 4px 4px 0 0; }}
-    .header-alquiler {{ background-color: #023E8A; color: white; padding: 6px 12px; font-weight: bold; font-size: 0.95rem; border-radius: 4px 4px 0 0; }}
-    .header-mobiliario {{ background-color: #0077B6; color: white; padding: 6px 12px; font-weight: bold; font-size: 0.95rem; border-radius: 4px 4px 0 0; }}
     .event-title {{ font-size: 1.15rem; font-weight: bold; color: #111; padding: 10px 80px 4px 12px; }}
     .data-line {{ font-size: 0.95rem; color: #222; padding: 2px 12px; }}
     div.stButton > button {{
@@ -132,24 +127,48 @@ def generar_texto_ficha(ev):
     p_data = ev.get("personal", [{}])
     p_data = p_data[0] if isinstance(p_data, list) and len(p_data) > 0 else (p_data if isinstance(p_data, dict) else {})
     
-    marca = str(ev.get("marca", "madai")).upper()
+    marca = str(ev.get("marca", "madai")).lower()
     tipo = str(ev.get("tipo", "Show"))
     fecha = formatear_fecha_larga(ev.get("fecha", ""))
     costo = float(ev.get('costo_total', 0) or 0)
     adelanto = float(ev.get('monto_adelanto', 0) or 0)
     pendiente = costo - adelanto
 
+    if marca == "local":
+        incluye_show = ev.get("incluye_show", False)
+        costo_local = float(ev.get('costo_local', 600) or 600)
+        adelanto_local = float(ev.get('adelanto_local', 0) or 0)
+        costo_show = float(ev.get('costo_show', 0) or 0)
+        adelanto_show = float(ev.get('adelanto_show', 0) or 0)
+        
+        texto = (
+            f"🏰 *ALQUILER DE LOCAL MADAI*\n"
+            f"📅 *FECHA:* {fecha}\n"
+            f"⏰ *HORA LOCAL:* {ev.get('hora_contrato', '10:00 AM')}\n"
+            f"👤 *CLIENTE:* {ev.get('cliente', 'N/A')} | 📱 *Tel:* {ev.get('telefono', 'N/A')}\n"
+            f"💵 *Local:* S/ {costo_local:.0f} (Adelanto: S/ {adelanto_local:.0f} | Pend: S/ {max(0, costo_local - adelanto_local):.0f})\n"
+        )
+        if incluye_show:
+            texto += (
+                f"🎉 *SHOW ADICIONAL:* Sí\n"
+                f"⏰ *Hora Show:* {ev.get('hora_show', 'N/A')}\n"
+                f"💵 *Show:* S/ {costo_show:.0f} (Adelanto: S/ {adelanto_show:.0f} | Pend: S/ {max(0, costo_show - adelanto_show):.0f})\n"
+                f"👥 *PERSONAL ASIGNADO:*\n"
+                f"  • Animadora: {p_data.get('animador', 'No asignada')}\n"
+                f"  • Dalinas: {p_data.get('dalinas', 'Ninguna')}\n"
+                f"  • DJ: {p_data.get('dj', 'No asignado')}\n"
+                f"  • Staff: {p_data.get('staff', 'No asignado')}\n"
+            )
+        texto += f"💰 *TOTAL GENERAL:* S/ {costo:.0f} | 💳 *ADELANTO TOTAL:* S/ {adelanto:.0f} | 🔴 *PENDIENTE TOTAL:* S/ {pendiente:.0f}\n"
+        return texto
+
     texto = (
-        f"🏷️ *MARCA: {marca}*\n"
+        f"🏷️ *MARCA: {marca.upper()}*\n"
         f"🎉 *RESUMEN DE EVENTO:* {ev.get('evento', 'Sin Nombre')} ({tipo})\n"
         f"📅 *FECHA:* {fecha}\n"
         f"⏰ *HORA:* {ev.get('hora_contrato', '04:30 PM')}\n"
         f"👤 *CLIENTE:* {ev.get('cliente', 'N/A')}\n"
-    )
-    if "LOCAL" not in marca:
-        texto += f"📍 *DIRECCIÓN:* {ev.get('direccion', 'N/A')}\n"
-    
-    texto += (
+        f"📍 *DIRECCIÓN:* {ev.get('direccion', 'N/A')}\n"
         f"👥 *PERSONAL ASIGNADO:*\n"
         f"  • Animadora: {p_data.get('animador', 'No asignada')}\n"
         f"  • Dalinas: {p_data.get('dalinas', 'Ninguna')}\n"
@@ -163,13 +182,32 @@ def generar_texto_ficha(ev):
     texto += f"💵 *Total:* S/ {costo:.0f} | 💳 *Adelanto:* S/ {adelanto:.0f} | 💰 *Pendiente:* S/ {pendiente:.0f}\n"
     return texto
 
+def generar_texto_alquiler(alq):
+    fecha = formatear_fecha_larga(alq.get("fecha", ""))
+    costo = float(alq.get('costo_total', 0) or 0)
+    adelanto = float(alq.get('monto_adelanto', 0) or 0)
+    pendiente = costo - adelanto
+
+    texto = (
+        f"📦 *ALQUILER DE MOBILIARIO / PRODUCTOS*\n"
+        f"📅 *FECHA DE ENTREGA:* {fecha}\n"
+        f"⏰ *HORA:* {alq.get('hora_entrega', 'N/A')}\n"
+        f"👤 *CLIENTE:* {alq.get('cliente', 'N/A')} | 📱 *Tel:* {alq.get('telefono', 'N/A')}\n"
+    )
+    if alq.get("direccion"):
+        texto += f"📍 *DIRECCIÓN:* {alq.get('direccion')}\n"
+    
+    texto += f"🛍️ *ITEMS:*\n{alq.get('items', 'N/A')}\n"
+    texto += f"💵 *Total:* S/ {costo:.0f} | 💳 *Adelanto:* S/ {adelanto:.0f} | 💰 *Pendiente:* S/ {pendiente:.0f}\n"
+    return texto
+
 # ==============================================================================
 # 5. MODALES
 # ==============================================================================
 @st.dialog("👤 Asignar / Editar Personal")
 def dialog_asignar_personal(evento):
     e_id = int(evento["id"])
-    st.write(f"**Evento:** {evento.get('evento', '')} - {evento.get('cliente', '')}")
+    st.write(f"**Evento / Show:** {evento.get('evento', '')} - {evento.get('cliente', '')}")
     
     res_p = supabase.table("personal").select("*").eq("evento_id", e_id).execute()
     datos_p = res_p.data[0] if res_p.data else {}
@@ -224,29 +262,48 @@ def dialog_ver_ficha(evento):
     pendiente = costo - adelanto
     marca = str(ev.get("marca", "madai")).lower()
     
-    header_class, color_fondo, nombre_marca = ("header-alquiler", "#A2D2FF", "LOCAL") if "local" in marca else (("header-risuena", "#B7E4C7", "RISUEÑA") if "risueña" in marca else ("header-madai", "#E0B0FF", "MADAI"))
+    if marca == "local":
+        header_class, color_fondo, nombre_marca = "header-local", "#1D3557", "ALQUILER DE LOCAL"
+    elif marca == "risueña":
+        header_class, color_fondo, nombre_marca = "header-risuena", "#B7E4C7", "RISUEÑA"
+    else:
+        header_class, color_fondo, nombre_marca = "header-madai", "#E0B0FF", "MADAI"
 
     st.markdown(f'<style>div[data-testid="stDialog"] > div:first-child {{ background-color: {color_fondo} !important; }}</style>', unsafe_allow_html=True)
     st.markdown(f'<div class="{header_class}">🏷️ {nombre_marca} — 📅 {fecha_fmt}</div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="event-title">🎉 Resumen: {ev.get("evento", "Sin Nombre")}</div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="data-line">👤 <b>Cliente:</b> {ev.get("cliente", "N/A")}</div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="data-line">⏰ <b>Hora:</b> {ev.get("hora_contrato", "04:30 PM")}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="event-title">🎉 {ev.get("evento", "Alquiler Local")}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="data-line">👤 <b>Cliente:</b> {ev.get("cliente", "N/A")} | 📱 <b>Tel:</b> {ev.get("telefono", "N/A")}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="data-line">⏰ <b>Hora Local:</b> {ev.get("hora_contrato", "10:00 AM")}</div>', unsafe_allow_html=True)
     
-    if "local" not in marca:
+    if marca == "local":
+        costo_local = float(ev.get('costo_local', 600) or 600)
+        adelanto_local = float(ev.get('adelanto_local', 0) or 0)
+        st.markdown(f'<div class="data-line">🏰 <b>Local:</b> Total S/ {costo_local:.0f} | Adelanto S/ {adelanto_local:.0f} | Pendiente S/ {max(0, costo_local - adelanto_local):.0f}</div>', unsafe_allow_html=True)
+        
+        if ev.get("incluye_show"):
+            costo_show = float(ev.get('costo_show', 0) or 0)
+            adelanto_show = float(ev.get('adelanto_show', 0) or 0)
+            st.markdown(f'<div class="data-line">🎉 <b>Show Adicional:</b> S/ {costo_show:.0f} (Adelanto: S/ {adelanto_show:.0f}) | ⏰ <b>Hora Show:</b> {ev.get("hora_show", "N/A")}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="{header_class}">👥 Personal Asignado al Show</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="data-line">🎤 <b>Animadora:</b> {p_data.get("animador", "No asignada")}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="data-line">💃 <b>Dalinas:</b> {p_data.get("dalinas", "Ninguna")}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="data-line">🎧 <b>DJ:</b> {p_data.get("dj", "No asignado")}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="data-line">🛠️ <b>Staff:</b> {p_data.get("staff", "No asignado")}</div>', unsafe_allow_html=True)
+    else:
         st.markdown(f'<div class="data-line">📍 <b>Dirección:</b> {ev.get("direccion", "N/A")}</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="{header_class}">👥 Personal Asignado</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="data-line">🎤 <b>Animadora:</b> {p_data.get("animador", "No asignada")}</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="data-line">💃 <b>Dalinas:</b> {p_data.get("dalinas", "Ninguna")}</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="data-line">🎧 <b>DJ:</b> {p_data.get("dj", "No asignado")}</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="data-line">🛠️ <b>Staff:</b> {p_data.get("staff", "No asignado")}</div>', unsafe_allow_html=True)
 
-    st.markdown(f'<div class="data-line">💵 <b>Total:</b> S/ {costo:.0f} | 💳 <b>Adelanto:</b> S/ {adelanto:.0f} | <b style="color: #D90429;">Pendiente: S/ {pendiente:.0f}</b></div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="{header_class}">👥 Personal Asignado</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="data-line" style="margin-top: 8px;">💵 <b>Total General:</b> S/ {costo:.0f} | 💳 <b>Adelanto:</b> S/ {adelanto:.0f} | <b style="color: #D90429;">Pendiente Total: S/ {pendiente:.0f}</b></div>', unsafe_allow_html=True)
     
-    st.markdown(f'<div class="data-line">🎤 <b>Animadora:</b> {p_data.get("animador", "No asignada")}</div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="data-line">💃 <b>Dalinas:</b> {p_data.get("dalinas", "Ninguna")}</div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="data-line">🎧 <b>DJ:</b> {p_data.get("dj", "No asignado")}</div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="data-line">🛠️ <b>Staff:</b> {p_data.get("staff", "No asignado")}</div>', unsafe_allow_html=True)
-    
-    if st.button("✏️ Modificar Personal", use_container_width=True, key=f"mod_{ev['id']}"):
-        st.session_state["ver_ficha_id"] = None
-        st.session_state["editar_personal_id"] = ev["id"]
-        st.rerun()
+    if marca != "local" or ev.get("incluye_show"):
+        if st.button("✏️ Modificar Personal", use_container_width=True, key=f"mod_{ev['id']}"):
+            st.session_state["ver_ficha_id"] = None
+            st.session_state["editar_personal_id"] = ev["id"]
+            st.rerun()
 
 # ==============================================================================
 # 6. RENDERIZAR LISTAS
@@ -267,32 +324,71 @@ def renderizar_lista_eventos(lista_eventos, key_prefix="evt"):
             tipo_str = str(ev.get('tipo', 'Show'))
             marca_raw = str(ev.get('marca', 'madai')).lower()
             
-            card_class, card_bg, badge_class, nombre_marca_tag = ("card-alquiler", "#A2D2FF", "badge-local", "local") if "local" in marca_raw else (("card-risuena", "#B7E4C7", "badge-risuena", "risueña") if "risueña" in marca_raw else ("card-madai", "#E0B0FF", "badge-madai", "madai"))
-            
             p_data = ev.get("personal", [{}])
             p_data = p_data[0] if isinstance(p_data, list) and len(p_data) > 0 else (p_data if isinstance(p_data, dict) else {})
             
             tiene_personal = bool(p_data.get("animador") and p_data.get("animador") != "Ninguno" or p_data.get("dalinas") or p_data.get("dj") or p_data.get("staff"))
 
-            html_tarjeta = (
-                f'<div class="{card_class}">'
-                f'<div class="badge-marca {badge_class}">{nombre_marca_tag}</div>'
-                f'<div class="event-title">🎉 {ev.get("evento", "Sin Nombre")} - ({tipo_str})</div>'
-                f'<div class="data-line">📅 <b>Fecha:</b> {formatear_fecha_larga(ev.get("fecha", ""))}</div>'
-                f'<div class="data-line">⏰ <b>Hora:</b> {ev.get("hora_contrato", "04:30 PM")}</div>'
-                f'<div class="data-line">👤 <b>Cliente:</b> {ev.get("cliente", "N/A")} | 📱 <b>Tel:</b> {ev.get("telefono", "N/A")}</div>'
-                f'<div class="data-line">📍 <b>Dirección:</b> {ev.get("direccion", "N/A")}</div>'
-                f'<hr style="margin: 6px 10px; border-top: 1px dashed #bbb;">'
-                f'<div class="data-line">🎤 <b>Animadora:</b> {p_data.get("animador", "No asignada")} | 💃 <b>Dalinas:</b> {p_data.get("dalinas", "Ninguna")}</div>'
-                f'<div class="data-line">🎧 <b>DJ:</b> {p_data.get("dj", "No asignado")} | 🛠️ <b>Staff:</b> {p_data.get("staff", "No asignado")}</div>'
-                f'<div class="data-line">💵 <b>Total:</b> S/ {costo:.0f} | 💳 <b>Adelanto:</b> S/ {adelanto:.0f} | <b style="color: #D90429;">Pendiente: S/ {pendiente:.0f}</b></div>'
-                f'</div>'
-            )
+            if marca_raw == "local":
+                card_bg = "#E2E8F0"
+                border_color = "#1D3557"
+                badge_class = "badge-local"
+                nombre_marca_tag = "alquiler local"
+                
+                costo_local = float(ev.get('costo_local', 600) or 600)
+                adelanto_local = float(ev.get('adelanto_local', 0) or 0)
+                pendiente_local = max(0, costo_local - adelanto_local)
+                incluye_show = ev.get("incluye_show", False)
+                
+                html_tarjeta = (
+                    f'<div style="padding: 0 0 12px 0; border-radius: 8px; margin-bottom: 12px; position: relative;">'
+                    f'<div class="badge-marca {badge_class}">{nombre_marca_tag}</div>'
+                    f'<div class="event-title">🏰 {ev.get("evento", "Alquiler de Local")}</div>'
+                    f'<div class="data-line">📅 <b>Fecha:</b> {formatear_fecha_larga(ev.get("fecha", ""))}</div>'
+                    f'<div class="data-line">⏰ <b>Hora Local:</b> {ev.get("hora_contrato", "10:00 AM")}</div>'
+                    f'<div class="data-line">👤 <b>Cliente:</b> {ev.get("cliente", "N/A")} | 📱 <b>Tel:</b> {ev.get("telefono", "N/A")}</div>'
+                    f'<hr style="margin: 6px 10px; border-top: 1px dashed #bbb;">'
+                    f'<div class="data-line">🏢 <b>Local:</b> S/ {costo_local:.0f} | Adelanto: S/ {adelanto_local:.0f} | <b style="color: #D90429;">Pend: S/ {pendiente_local:.0f}</b></div>'
+                )
+                if incluye_show:
+                    costo_show = float(ev.get('costo_show', 0) or 0)
+                    adelanto_show = float(ev.get('adelanto_show', 0) or 0)
+                    pendiente_show = max(0, costo_show - adelanto_show)
+                    html_tarjeta += (
+                        f'<div class="data-line" style="color: #7B2CBF; font-weight: bold;">🎉 Show Adicional (Hora: {ev.get("hora_show", "N/A")})</div>'
+                        f'<div class="data-line">💵 <b>Show:</b> S/ {costo_show:.0f} | Adelanto: S/ {adelanto_show:.0f} | <b style="color: #D90429;">Pend: S/ {pendiente_show:.0f}</b></div>'
+                        f'<div class="data-line">🎤 <b>Animadora:</b> {p_data.get("animador", "No asignada")} | 💃 <b>Dalinas:</b> {p_data.get("dalinas", "Ninguna")}</div>'
+                    )
+                else:
+                    html_tarjeta += f'<div class="data-line" style="color: #666; font-style: italic;">ℹ️ Solo Alquiler de Local (Modo Lectura)</div>'
+                
+                html_tarjeta += f'<div class="data-line" style="margin-top: 4px;">💵 <b>Total General:</b> S/ {costo:.0f} | 💳 <b>Adelanto Total:</b> S/ {adelanto:.0f} | <b style="color: #D90429;">Pendiente Total: S/ {pendiente:.0f}</b></div>'
+                html_tarjeta += f'</div>'
+            else:
+                card_bg = "#B7E4C7" if marca_raw == "risueña" else "#E0B0FF"
+                border_color = "#28A745" if marca_raw == "risueña" else "#7B2CBF"
+                badge_class = "badge-risuena" if marca_raw == "risueña" else "badge-madai"
+                nombre_marca_tag = marca_raw
+
+                html_tarjeta = (
+                    f'<div style="padding: 0 0 12px 0; border-radius: 8px; margin-bottom: 12px; position: relative;">'
+                    f'<div class="badge-marca {badge_class}">{nombre_marca_tag}</div>'
+                    f'<div class="event-title">🎉 {ev.get("evento", "Sin Nombre")} - ({tipo_str})</div>'
+                    f'<div class="data-line">📅 <b>Fecha:</b> {formatear_fecha_larga(ev.get("fecha", ""))}</div>'
+                    f'<div class="data-line">⏰ <b>Hora:</b> {ev.get("hora_contrato", "04:30 PM")}</div>'
+                    f'<div class="data-line">👤 <b>Cliente:</b> {ev.get("cliente", "N/A")} | 📱 <b>Tel:</b> {ev.get("telefono", "N/A")}</div>'
+                    f'<div class="data-line">📍 <b>Dirección:</b> {ev.get("direccion", "N/A")}</div>'
+                    f'<hr style="margin: 6px 10px; border-top: 1px dashed #bbb;">'
+                    f'<div class="data-line">🎤 <b>Animadora:</b> {p_data.get("animador", "No asignada")} | 💃 <b>Dalinas:</b> {p_data.get("dalinas", "Ninguna")}</div>'
+                    f'<div class="data-line">🎧 <b>DJ:</b> {p_data.get("dj", "No asignado")} | 🛠️ <b>Staff:</b> {p_data.get("staff", "No asignado")}</div>'
+                    f'<div class="data-line">💵 <b>Total:</b> S/ {costo:.0f} | 💳 <b>Adelanto:</b> S/ {adelanto:.0f} | <b style="color: #D90429;">Pendiente: S/ {pendiente:.0f}</b></div>'
+                    f'</div>'
+                )
 
             st.markdown(f"""
                 <style>
                 div.st-key-{key_prefix}_card_{ev['id']} {{
-                    background-color: {card_bg} !important; border-left: 6px solid #28A745 !important;
+                    background-color: {card_bg} !important; border-left: 6px solid {border_color} !important;
                     border-radius: 8px !important; padding: 0 0 10px 0 !important; margin-bottom: 14px !important;
                 }}
                 div.st-key-{key_prefix}_card_{ev['id']} [data-testid="stHorizontalBlock"] {{ gap: 0.5rem !important; padding: 0 10px !important; }}
@@ -302,25 +398,38 @@ def renderizar_lista_eventos(lista_eventos, key_prefix="evt"):
 
             with st.container(key=f"{key_prefix}_card_{ev['id']}"):
                 st.markdown(html_tarjeta, unsafe_allow_html=True)
-                col1, col2, col3 = st.columns([1.2, 1.2, 1.5])
                 
-                with col1:
-                    if not tiene_personal:
-                        if st.button("👤 Asignar", key=f"{key_prefix}_asg_{ev['id']}"):
-                            st.session_state["editar_personal_id"] = ev["id"]
-                            st.rerun()
-                    else:
-                        if st.button("📋 Ver Ficha", key=f"{key_prefix}_ver_{ev['id']}"):
+                # Mostrar botones condicionales
+                mostrar_botones = (marca_raw != "local") or (marca_raw == "local" and ev.get("incluye_show"))
+                
+                if mostrar_botones:
+                    col1, col2, col3 = st.columns([1.2, 1.2, 1.5])
+                    with col1:
+                        if not tiene_personal:
+                            if st.button("👤 Asignar", key=f"{key_prefix}_asg_{ev['id']}"):
+                                st.session_state["editar_personal_id"] = ev["id"]
+                                st.rerun()
+                        else:
+                            if st.button("📋 Ver Ficha", key=f"{key_prefix}_ver_{ev['id']}"):
+                                st.session_state["ver_ficha_id"] = ev["id"]
+                                st.rerun()
+                    with col2:
+                        if tiene_personal:
+                            if st.button("✏️ Editar", key=f"{key_prefix}_edt_{ev['id']}"):
+                                st.session_state["editar_personal_id"] = ev["id"]
+                                st.rerun()
+                    with col3:
+                        if st.checkbox("☑️ Enviar", key=f"{key_prefix}_chk_{ev['id']}"):
+                            seleccionados.append(ev)
+                else:
+                    col_lectura, col_chk = st.columns([2, 1.5])
+                    with col_lectura:
+                        if st.button("📋 Ver Ficha", key=f"{key_prefix}_ver_lectura_{ev['id']}"):
                             st.session_state["ver_ficha_id"] = ev["id"]
                             st.rerun()
-                with col2:
-                    if tiene_personal:
-                        if st.button("✏️ Editar", key=f"{key_prefix}_edt_{ev['id']}"):
-                            st.session_state["editar_personal_id"] = ev["id"]
-                            st.rerun()
-                with col3:
-                    if st.checkbox("☑️ Enviar", key=f"{key_prefix}_chk_{ev['id']}"):
-                        seleccionados.append(ev)
+                    with col_chk:
+                        if st.checkbox("☑️ Enviar", key=f"{key_prefix}_chk_{ev['id']}"):
+                            seleccionados.append(ev)
     return seleccionados
 
 def renderizar_lista_alquileres(lista_alquileres, key_prefix="alq"):
@@ -338,7 +447,7 @@ def renderizar_lista_alquileres(lista_alquileres, key_prefix="alq"):
             pendiente = costo - adelanto
             
             html_tarjeta = (
-                f'<div class="card-mobiliario">'
+                f'<div style="padding: 0 0 12px 0; border-radius: 8px; margin-bottom: 12px; position: relative;">'
                 f'<div class="badge-marca badge-mobiliario">mobiliario</div>'
                 f'<div class="event-title">📦 Alquiler de Productos</div>'
                 f'<div class="data-line">📅 <b>Fecha Entrega:</b> {formatear_fecha_larga(alq.get("fecha", ""))}</div>'
@@ -378,7 +487,6 @@ st.markdown(f'<div class="header-container"><img src="data:image/jpeg;base64,{lo
 eventos_todos = obtener_eventos()
 alquileres_todos = obtener_alquileres()
 
-# Disparadores de modales colocados de forma segura dentro del flujo principal
 if st.session_state["ver_ficha_id"]:
     dialog_ver_ficha(next((e for e in eventos_todos if e["id"] == st.session_state["ver_ficha_id"]), {}))
 
@@ -416,9 +524,9 @@ elif tab_seleccionada == "DÍA SIGUIENTE":
         st.markdown(f'<a href="https://wa.me/?text={urllib.parse.quote(texto_masivo_sig)}" target="_blank"><button style="width: 100%; background-color: #25D366; color: white; border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer;">📤 Enviar Fichas Seleccionadas al WhatsApp Grupal</button></a>', unsafe_allow_html=True)
 
 elif tab_seleccionada == "ALQUILERES":
-    st.write("### 🛋️ Gestión y Registro de Alquileres")
+    st.write("### 🛋️ Gestión y Registro de Alquileres de Productos")
     
-    with st.expander("➕ Registrar Nuevo Alquiler", expanded=False):
+    with st.expander("➕ Registrar Nuevo Alquiler de Productos", expanded=False):
         col_a1, col_a2 = st.columns(2)
         with col_a1:
             alq_cliente = st.text_input("**Nombre del Cliente**", key="alq_cli")
@@ -454,30 +562,79 @@ elif tab_seleccionada == "ALQUILERES":
         st.markdown(f'<a href="https://wa.me/?text={urllib.parse.quote(texto_masivo_alq)}" target="_blank"><button style="width: 100%; background-color: #25D366; color: white; border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer;">📤 Enviar Alquileres Seleccionados al WhatsApp</button></a>', unsafe_allow_html=True)
 
 elif tab_seleccionada == "REGISTRO":
-    st.write("### ➕ Registrar Nuevo Evento")
+    st.write("### ➕ Registrar Nuevo Evento / Alquiler de Local")
     col1, col2 = st.columns(2)
     
     with col1:
-        marca = st.selectbox("**Marca**", ["madai", "risueña", "local"])
-        evento_nom = st.text_input("**Nombre del Evento**")
-        tipo_e = "Alquiler de Local" if marca == "local" else st.selectbox("**Tipo**", ["Show", "Show + Deco", "Deco"])
+        marca = st.selectbox("**Marca o Tipo**", ["madai", "risueña", "local"])
+        
+        if marca == "local":
+            evento_nom = "Alquiler de Local MADAI"
+            tipo_e = "Alquiler de Local"
+        else:
+            evento_nom = st.text_input("**Nombre del Evento**")
+            tipo_e = st.selectbox("**Tipo**", ["Show", "Show + Deco", "Deco"])
+            
         cliente = st.text_input("**Cliente**")
         telefono = st.text_input("**Teléfono**")
         direccion = "Local MADAI" if marca == "local" else st.text_input("**Dirección**")
         fecha_e = st.date_input("**Fecha**", value=date.today())
     
     with col2:
-        hora_c = st.text_input("**Hora**", value="04:30 PM")
-        costo_t = 600 if marca == "local" else st.number_input("**Monto Total (S/)**", min_value=0, step=10, value=250)
-        monto_a = st.number_input("**Adelanto (S/)**", min_value=0, step=10, value=100)
-        st.markdown(f"🔴 **Pendiente:** S/ {max(0, costo_t - monto_a):.0f}")
+        if marca == "local":
+            hora_c = st.text_input("**Hora de Inicio Local**", value="10:00 AM")
+            costo_local = st.number_input("**Monto Alquiler Local (S/)**", min_value=0, step=10, value=600)
+            adelanto_local = st.number_input("**Adelanto Local (S/)**", min_value=0, step=10, value=200)
+            
+            st.markdown("---")
+            incluye_show = st.checkbox("🎉 ¿Adicionar Show al Local?")
+            
+            if incluye_show:
+                hora_show = st.text_input("**Hora del Show**", value="04:00 PM")
+                costo_show = st.number_input("**Monto del Show (S/)**", min_value=0, step=10, value=300)
+                adelanto_show = st.number_input("**Adelanto del Show (S/)**", min_value=0, step=10, value=100)
+            else:
+                hora_show = ""
+                costo_show = 0
+                adelanto_show = 0
+                
+            costo_t = costo_local + costo_show
+            monto_a = adelanto_local + adelanto_show
+            st.markdown(f"🔴 **Pendiente Total:** S/ {max(0, costo_t - monto_a):.0f}")
+        else:
+            hora_c = st.text_input("**Hora**", value="04:30 PM")
+            costo_t = st.number_input("**Monto Total (S/)**", min_value=0, step=10, value=250)
+            monto_a = st.number_input("**Adelanto (S/)**", min_value=0, step=10, value=100)
+            incluye_show = False
+            costo_local = 0
+            adelanto_local = 0
+            costo_show = 0
+            adelanto_show = 0
+            hora_show = ""
+            st.markdown(f"🔴 **Pendiente:** S/ {max(0, costo_t - monto_a):.0f}")
 
-    if st.button("📌 GUARDAR EVENTO", use_container_width=True):
-        supabase.table("eventos").insert({
+    if st.button("📌 GUARDAR REGISTRO", use_container_width=True):
+        payload = {
             "marca": marca, "evento": evento_nom, "tipo": tipo_e, "cliente": cliente,
             "telefono": telefono, "direccion": direccion, "fecha": str(fecha_e),
-            "hora_contrato": hora_c, "costo_total": float(costo_t), "monto_adelanto": float(monto_a)
-        }).execute()
+            "hora_contrato": hora_c, "costo_total": float(costo_t), "monto_adelanto": float(monto_a),
+            "incluye_show": incluye_show if marca == "local" else False,
+            "costo_local": float(costo_local) if marca == "local" else 0,
+            "adelanto_local": float(adelanto_local) if marca == "local" else 0,
+            "costo_show": float(costo_show) if marca == "local" else 0,
+            "adelanto_show": float(adelanto_show) if marca == "local" else 0,
+            "hora_show": hora_show if marca == "local" else ""
+        }
+        supabase.table("eventos").insert(payload).execute()
         st.cache_data.clear()
         st.session_state["tab_activa"] = "HOY"
         st.rerun()
+
+# ==============================================================================
+# 8. DISPARADORES DE MODALES
+# ==============================================================================
+if st.session_state["ver_ficha_id"]:
+    dialog_ver_ficha(next((e for e in eventos_todos if e["id"] == st.session_state["ver_ficha_id"]), {}))
+
+if st.session_state["editar_personal_id"]:
+    dialog_asignar_personal(next((e for e in eventos_todos if e["id"] == st.session_state["editar_personal_id"]), {}))
