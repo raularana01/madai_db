@@ -372,9 +372,9 @@ elif tab_seleccionada == "REGISTRO":
     col1, col2 = st.columns(2)
     
     with col1:
-        marca = st.selectbox("**Marca**", ["madai", "risueña"])
+        marca = st.selectbox("**Marca**", ["madai", "risueña", "local"])
         evento_nom = st.text_input("**Nombre del Evento**")
-        tipo_e = st.selectbox("**Tipo**", ["Show", "Show + Deco", "Deco"])
+        tipo_e = st.selectbox("**Tipo**", ["Show", "Show + Decoración", "Decoración"])
         cliente = st.text_input("**Cliente**")
         telefono = st.text_input("**Teléfono**")
         direccion = st.text_input("**Dirección**")
@@ -383,6 +383,20 @@ elif tab_seleccionada == "REGISTRO":
     with col2:
         hora_c = st.text_input("**Hora**", value="04:30 PM")
         
+        costo_show = 0.0
+        costo_decoracion = 0.0
+
+        if tipo_e == "Show + Decoración":
+            costo_show = st.number_input("**Monto del Show (S/)**", min_value=0.0, step=10.0, value=200.0)
+            costo_decoracion = st.number_input("**Monto de la Decoración (S/)**", min_value=0.0, step=10.0, value=150.0)
+            costo_t = costo_show + costo_decoracion
+        elif tipo_e == "Decoración":
+            costo_decoracion = st.number_input("**Monto de la Decoración (S/)**", min_value=0.0, step=10.0, value=200.0)
+            costo_t = costo_decoracion
+        else:
+            costo_show = st.number_input("**Monto del Show (S/)**", min_value=0.0, step=10.0, value=250.0)
+            costo_t = costo_show
+
         incluye_alq = st.checkbox("📦 ¿Incluye Alquiler adicional en este evento?")
         detalle_alq = ""
         monto_alq = 0.0
@@ -390,7 +404,6 @@ elif tab_seleccionada == "REGISTRO":
             detalle_alq = st.text_input("Descripción del alquiler (ej. Sillas, mesas, toldo)")
             monto_alq = st.number_input("Monto del Alquiler (S/)", min_value=0.0, step=10.0, value=50.0)
 
-        costo_t = st.number_input("**Monto Total del Show (S/)**", min_value=0.0, step=10.0, value=250.0)
         costo_total_final = costo_t + (monto_alq if incluye_alq else 0.0)
         monto_a = st.number_input("**Adelanto (S/)**", min_value=0.0, step=10.0, value=100.0)
         st.markdown(f"🔴 **Total General:** S/ {costo_total_final:.0f} | 🔴 **Pendiente:** S/ {max(0, costo_total_final - monto_a):.0f}")
@@ -408,7 +421,7 @@ elif tab_seleccionada == "REGISTRO":
             st.success("¡Evento guardado con éxito!")
             st.rerun()
         except Exception as ex:
-            st.error(f"Error al guardar en Supabase. Asegúrate de haber creado las columnas 'incluye_alquiler', 'detalle_alquiler' y 'monto_alquiler' en tu base de datos. Detalle: {ex}")
+            st.error(f"Error al guardar en Supabase: {ex}")
 
 elif tab_seleccionada == "ALQUILERES":
     st.write("### 📦 Registro de Alquileres Independientes")
@@ -466,7 +479,7 @@ elif tab_seleccionada == "ALQUILERES":
             st.success("¡Alquiler registrado correctamente!")
             st.rerun()
         except Exception as ex:
-            st.error(f"Error al guardar el alquiler. Asegúrate de haber agregado las columnas de alquiler en Supabase. Detalle: {ex}")
+            st.error(f"Error al guardar el alquiler: {ex}")
 
 # ==============================================================================
 # 8. DISPARADORES DE MODALES
