@@ -148,7 +148,7 @@ def generar_texto_ficha(ev):
         texto += f"📍 *DIRECCIÓN:* {ev.get('direccion', 'N/A')}\n"
     
     if marca == "MOBILIARIO":
-        texto += f"📦 *MOBILIARIO:* {ev.get('direccion', 'N/A')}\n"
+        texto += f"📦 *MOBILIARIO:* {ev.get('evento', 'N/A')}\n"
     else:
         texto += (
             f"👥 *PERSONAL ASIGNADO:*\n"
@@ -171,35 +171,26 @@ def generar_texto_ficha(ev):
 def dialog_registrar_alquiler():
     st.markdown("### 🪑 Detalle del Mobiliario")
     
-    col_i1, col_i2, col_i3 = st.columns([2, 1, 1])
+    col_i1, col_i2 = st.columns([3, 1])
     with col_i1:
-        item_nombre = st.text_input("Ítem / Mobiliario", key="item_nom_input")
+        item_nombre = st.text_input("Ingresar Ítem / Mobiliario", key="item_nom_input", placeholder="Ej: 10 Sillas plásticas")
     with col_i2:
-        item_cant = st.number_input("Cant.", min_value=1, value=1, key="item_cant_input")
-    with col_i3:
-        item_precio = st.number_input("Precio U. (S/)", min_value=0.0, step=5.0, value=10.0, key="item_prec_input")
+        st.write("")
+        st.write("")
+        btn_add = st.button("➕ Agregar", key="btn_agregar_item")
         
-    if st.button("➕ Agregar Ítem", key="btn_agregar_item"):
-        if item_nombre.strip():
-            subtotal = item_cant * item_precio
-            st.session_state["items_alquiler"].append({
-                "item": item_nombre.strip(),
-                "cantidad": item_cant,
-                "precio": item_precio,
-                "subtotal": subtotal
-            })
-            st.rerun()
+    if btn_add and item_nombre.strip():
+        st.session_state["items_alquiler"].append(item_nombre.strip())
+        st.rerun()
 
-    # Mostrar lista de ítems agregados
-    monto_total_calculado = 0.0
+    # Lista de ítems agregados
     if st.session_state["items_alquiler"]:
         st.write("---")
-        st.write("**Lista de Ítems Agregados:**")
+        st.write("**Ítems Agregados:**")
         for idx, it in enumerate(st.session_state["items_alquiler"]):
-            monto_total_calculado += it["subtotal"]
             col_t1, col_t2 = st.columns([4, 1])
             with col_t1:
-                st.write(f"• **{it['cantidad']}x {it['item']}** - S/ {it['subtotal']:.0f}")
+                st.write(f"• **{it}**")
             with col_t2:
                 if st.button("🗑️", key=f"del_item_{idx}"):
                     st.session_state["items_alquiler"].pop(idx)
@@ -207,7 +198,7 @@ def dialog_registrar_alquiler():
 
     st.write("---")
     st.markdown("### 👤 Datos del Cliente")
-    cli_nombre = st.text_input("Nombre del Cliente", key="alq_cliente")
+    cli_nombre = st.text_input("Nombre de la persona que alquila", key="alq_cliente")
     cli_telefono = st.text_input("Número de Celular", key="alq_telefono")
     cli_direccion = st.text_input("Dirección de Entrega / Evento", key="alq_direccion")
     
@@ -217,19 +208,23 @@ def dialog_registrar_alquiler():
     with col_f2:
         hora_alq = st.text_input("Hora de Entrega", value="09:00 AM", key="alq_hora")
         
-    monto_adelanto = st.number_input("Adelanto / Pago (S/)", min_value=0.0, max_value=float(monto_total_calculado), value=0.0, key="alq_adelanto")
-    
-    st.markdown(f"### 💰 **Total Calculado:** S/ {monto_total_calculado:.0f}")
-    st.markdown(f"🔴 **Pendiente:** S/ {max(0.0, monto_total_calculado - monto_adelanto):.0f}")
+    st.write("---")
+    st.markdown("### 💵 Montos")
+    col_m1, col_m2 = st.columns(2)
+    with col_m1:
+        monto_total_manual = st.number_input("Monto Total (S/)", min_value=0.0, step=10.0, value=0.0, key="alq_total_manual")
+    with col_m2:
+        monto_adelanto = st.number_input("Adelanto / Pago (S/)", min_value=0.0, step=10.0, value=0.0, key="alq_adelanto")
+        
+    st.markdown(f"🔴 **Pendiente:** S/ {max(0.0, monto_total_manual - monto_adelanto):.0f}")
 
     if st.button("💾 GUARDAR ALQUILER", type="primary", use_container_width=True):
         if not cli_nombre.strip():
-            st.error("Por favor ingresa el nombre del cliente.")
+            st.error("Por favor ingresa el nombre de la persona.")
         elif not st.session_state["items_alquiler"]:
             st.error("Agrega al menos un ítem a la lista.")
         else:
-            # Crear resumen de ítems
-            resumen_items = ", ".join([f"{it['cantidad']}x {it['item']}" for it in st.session_state["items_alquiler"]])
+            resumen_items = ", ".join(st.session_state["items_alquiler"])
             
             supabase.table("eventos").insert({
                 "marca": "mobiliario",
@@ -240,7 +235,7 @@ def dialog_registrar_alquiler():
                 "direccion": cli_direccion.strip() if cli_direccion.strip() else "Alquiler de Mobiliario",
                 "fecha": str(fecha_alq),
                 "hora_contrato": hora_alq.strip(),
-                "costo_total": float(monto_total_calculado),
+                "costo_total": float(monto_total_manual),
                 "monto_adelanto": float(monto_adelanto)
             }).execute()
             
@@ -351,7 +346,6 @@ def renderizar_lista_eventos(lista_eventos, key_prefix="evt"):
             tipo_str = str(ev.get('tipo', 'Show'))
             marca_raw = str(ev.get('marca', 'madai')).lower()
             
-            # Configuración de tarjeta
             if "mobiliario" in marca_raw:
                 card_class, card_bg, badge_class, nombre_marca_tag = "card-mobiliario", "#FFD6D6", "badge-mobiliario", "mobiliario"
             elif "local" in marca_raw:
@@ -366,7 +360,6 @@ def renderizar_lista_eventos(lista_eventos, key_prefix="evt"):
             
             tiene_personal = bool(p_data.get("animador") and p_data.get("animador") != "Ninguno" or p_data.get("dalinas") or p_data.get("dj") or p_data.get("staff"))
 
-            # HTML de la Tarjeta Visual
             html_tarjeta = (
                 f'<div class="{card_class}">'
                 f'<div class="badge-marca {badge_class}">{nombre_marca_tag}</div>'
@@ -405,7 +398,6 @@ def renderizar_lista_eventos(lista_eventos, key_prefix="evt"):
             with st.container(key=f"{key_prefix}_card_{ev['id']}"):
                 st.markdown(html_tarjeta, unsafe_allow_html=True)
                 
-                # Si es mobiliario, se muestra solo en modo lectura
                 if "mobiliario" not in marca_raw:
                     col1, col2, col3 = st.columns([1.2, 1.2, 1.5])
                     with col1:
@@ -476,7 +468,7 @@ elif tab_seleccionada == "DÍA SIGUIENTE":
 
 elif tab_seleccionada == "ALQUILER":
     st.write("### 🪑 Gestión de Alquiler de Mobiliario")
-    st.info("Ingresa al formulario para agregar ítems de inmobiliaria/mobiliario y generar la orden.")
+    st.info("Ingresa al formulario para agregar ítems de mobiliario y registrar los datos del alquiler.")
     dialog_registrar_alquiler()
 
 elif tab_seleccionada == "REGISTRO":
