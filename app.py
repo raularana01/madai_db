@@ -226,6 +226,7 @@ def dialog_registrar_alquiler():
         else:
             resumen_items = ", ".join(st.session_state["items_alquiler"])
             
+            # Guardar en Supabase
             supabase.table("eventos").insert({
                 "marca": "mobiliario",
                 "evento": f"Alquiler: {resumen_items}",
@@ -239,9 +240,10 @@ def dialog_registrar_alquiler():
                 "monto_adelanto": float(monto_adelanto)
             }).execute()
             
+            # Resetear estado y redirigir para cerrar modal en un solo clic
             st.session_state["items_alquiler"] = []
             st.cache_data.clear()
-            st.success("¡Alquiler guardado con éxito!")
+            st.session_state["tab_activa"] = "HOY"
             st.rerun()
 
 @st.dialog("👤 Asignar / Editar Personal")
