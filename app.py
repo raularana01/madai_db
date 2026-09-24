@@ -107,7 +107,7 @@ st.markdown(f"""
 def formatear_fecha_larga(fecha_str):
     if not fecha_str: return "Sin fecha"
     try:
-        dt = datetime.strptime(str(fecha_str), "%Y-%m-%d")
+        dt = datetime.strptime(str(fecha_str)[:10], "%Y-%m-%d")
         dias = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
         meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
         return f"{dias[dt.weekday()]} {dt.day} de {meses[dt.month - 1]} de {dt.year}"
@@ -348,7 +348,7 @@ eventos_todos = obtener_eventos()
 if tab_seleccionada == "HOY":
     st.write("### 📅 Eventos del Día de Hoy")
     hoy_str = str(date.today())
-    sel_hoy = renderizar_lista_eventos([e for e in eventos_todos if str(e.get("fecha")) == hoy_str], key_prefix="hoy")
+    sel_hoy = renderizar_lista_eventos([e for e in eventos_todos if str(e.get("fecha"))[:10] == hoy_str], key_prefix="hoy")
 
     if sel_hoy:
         texto_masivo = f"📋 *RESUMEN DE EVENTOS SELECCIONADOS* ({formatear_fecha_larga(hoy_str)})\n\n"
@@ -359,7 +359,7 @@ if tab_seleccionada == "HOY":
 elif tab_seleccionada == "DÍA SIGUIENTE":
     st.write("### 📆 Eventos del Día Siguiente")
     sig_str = str(date.today() + timedelta(days=1))
-    sel_sig = renderizar_lista_eventos([e for e in eventos_todos if str(e.get("fecha")) == sig_str], key_prefix="sig")
+    sel_sig = renderizar_lista_eventos([e for e in eventos_todos if str(e.get("fecha"))[:10] == sig_str], key_prefix="sig")
 
     if sel_sig:
         texto_masivo_sig = f"📋 *RESUMEN DE EVENTOS PARA MAÑANA* ({formatear_fecha_larga(sig_str)})\n\n"
@@ -383,7 +383,6 @@ elif tab_seleccionada == "REGISTRO":
     with col2:
         hora_c = st.text_input("**Hora**", value="04:30 PM")
         
-        # Opción de alquiler extra antes del monto total
         incluye_alq = st.checkbox("📦 ¿Incluye Alquiler adicional en este evento?")
         detalle_alq = ""
         monto_alq = 0.0
