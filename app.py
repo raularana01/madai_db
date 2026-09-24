@@ -83,7 +83,7 @@ st.markdown(f"""
         padding: 6px 18px !important; border-radius: 20px !important;
         border: 1.5px solid #7B2CBF !important; font-weight: bold !important; color: #7B2CBF !important;
     }}
-    .card-madai, .card-risuena, .card-alquiler {{ padding: 0 0 12px 0; border-radius: 8px; margin-bottom: 12px; position: relative; }}
+    .card-madai, .card-risuena, .card-alquiler, .card-mobiliario {{ padding: 0 0 12px 0; border-radius: 8px; margin-bottom: 12px; position: relative; }}
     .badge-marca {{
         position: absolute; top: 8px; right: 12px; padding: 3px 10px; border-radius: 12px;
         font-size: 0.75rem; font-weight: bold; color: white; text-transform: uppercase;
@@ -91,9 +91,11 @@ st.markdown(f"""
     .badge-madai {{ background-color: #7B2CBF; }}
     .badge-risuena {{ background-color: #2B9348; }}
     .badge-local {{ background-color: #023E8A; }}
+    .badge-mobiliario {{ background-color: #0077B6; }}
     .header-madai {{ background-color: #7B2CBF; color: white; padding: 6px 12px; font-weight: bold; font-size: 0.95rem; border-radius: 4px 4px 0 0; }}
     .header-risuena {{ background-color: #2B9348; color: white; padding: 6px 12px; font-weight: bold; font-size: 0.95rem; border-radius: 4px 4px 0 0; }}
     .header-alquiler {{ background-color: #023E8A; color: white; padding: 6px 12px; font-weight: bold; font-size: 0.95rem; border-radius: 4px 4px 0 0; }}
+    .header-mobiliario {{ background-color: #0077B6; color: white; padding: 6px 12px; font-weight: bold; font-size: 0.95rem; border-radius: 4px 4px 0 0; }}
     .event-title {{ font-size: 1.15rem; font-weight: bold; color: #111; padding: 10px 80px 4px 12px; }}
     .data-line {{ font-size: 0.95rem; color: #222; padding: 2px 12px; }}
     div.stButton > button {{
@@ -116,22 +118,14 @@ def formatear_fecha_larga(fecha_str):
     except Exception:
         return str(fecha_str)
 
-def calcular_hora_fin(hora_inicio_str, duracion_str="2 horas"):
-    try:
-        dt_inicio = datetime.strptime(hora_inicio_str.strip(), "%I:%M %p")
-        minutos = 120
-        if "1.5" in duracion_str: minutos = 90
-        elif "2.5" in duracion_str: minutos = 150
-        elif "3" in duracion_str: minutos = 180
-        elif "1" in duracion_str: minutos = 60
-        dt_fin = dt_inicio + timedelta(minutes=minutos)
-        return f"{dt_inicio.strftime('%I:%M %p')} a {dt_fin.strftime('%I:%M %p')}"
-    except Exception:
-        return f"{hora_inicio_str} ({duracion_str})"
-
 @st.cache_data(ttl=5)
 def obtener_eventos():
     res = supabase.table("eventos").select("*, personal(*)").execute()
+    return res.data if res.data else []
+
+@st.cache_data(ttl=5)
+def obtener_alquileres():
+    res = supabase.table("alquileres").select("*").execute()
     return res.data if res.data else []
 
 def generar_texto_ficha(ev):
@@ -145,7 +139,6 @@ def generar_texto_ficha(ev):
     adelanto = float(ev.get('monto_adelanto', 0) or 0)
     pendiente = costo - adelanto
 
-    # Resumen optimizado para WhatsApp
     texto = (
         f"🏷️ *MARCA: {marca}*\n"
         f"🎉 *RESUMEN DE EVENTO:* {ev.get('evento', 'Sin Nombre')} ({tipo})\n"
@@ -167,6 +160,25 @@ def generar_texto_ficha(ev):
     if p_data.get("detalles"):
         texto += f"📝 *Notas:* {p_data.get('detalles')}\n"
         
+    texto += f"💵 *Total:* S/ {costo:.0f} | 💳 *Adelanto:* S/ {adelanto:.0f} | 💰 *Pendiente:* S/ {pendiente:.0f}\n"
+    return texto
+
+def generar_texto_alquiler(alq):
+    fecha = formatear_fecha_larga(alq.get("fecha", ""))
+    costo = float(alq.get('costo_total', 0) or 0)
+    adelanto = float(alq.get('monto_adelanto', 0) or 0)
+    pendiente = costo - adelanto
+
+    texto = (
+        f"🛋️ *ALQUILER DE MOBILIARIO / PRODUCTOS*\n"
+        f"📅 *FECHA DE ENTREGA:* {fecha}\n"
+        f"⏰ *HORA:* {alq.get('hora_entrega', 'N/A')}\n"
+        f"👤 *CLIENTE:* {alq.get('cliente', 'N/A')} | 📱 *Tel:* {alq.get('telefono', 'N/A')}\n"
+    )
+    if alq.get("direccion"):
+        texto += f"📍 *DIRECCIÓN:* {alq.get('direccion')}\n"
+    
+    texto += f"📦 *ITEMS / PRODUCTOS:*\n{alq.get('items', 'N/A')}\n"
     texto += f"💵 *Total:* S/ {costo:.0f} | 💳 *Adelanto:* S/ {adelanto:.0f} | 💰 *Pendiente:* S/ {pendiente:.0f}\n"
     return texto
 
@@ -231,7 +243,7 @@ def dialog_ver_ficha(evento):
     pendiente = costo - adelanto
     marca = str(ev.get("marca", "madai")).lower()
     
-    header_class, color_fondo, nombre_marca = ("header-alquiler", "#A2D2FF", "LOCAL") if "local" in marca else (("header-risuena", "#B7E4C7", "badge-risuena", "RISUEÑA") if "risueña" in marca else ("header-madai", "#E0B0FF", "MADAI"))
+    header_class, color_fondo, nombre_marca = ("header-alquiler", "#A2D2FF", "LOCAL") if "local" in marca else (("header-risuena", "#B7E4C7", "RISUEÑA") if "risueña" in marca else ("header-madai", "#E0B0FF", "MADAI"))
 
     st.markdown(f'<style>div[data-testid="stDialog"] > div:first-child {{ background-color: {color_fondo} !important; }}</style>', unsafe_allow_html=True)
     st.markdown(f'<div class="{header_class}">🏷️ {nombre_marca} — 📅 {fecha_fmt}</div>', unsafe_allow_html=True)
@@ -256,7 +268,7 @@ def dialog_ver_ficha(evento):
         st.rerun()
 
 # ==============================================================================
-# 6. RENDERIZAR LISTA (TARJETAS VISUALES COMPLETAS)
+# 6. RENDERIZAR LISTAS
 # ==============================================================================
 def renderizar_lista_eventos(lista_eventos, key_prefix="evt"):
     if not lista_eventos:
@@ -281,7 +293,6 @@ def renderizar_lista_eventos(lista_eventos, key_prefix="evt"):
             
             tiene_personal = bool(p_data.get("animador") and p_data.get("animador") != "Ninguno" or p_data.get("dalinas") or p_data.get("dj") or p_data.get("staff"))
 
-            # Tarjeta visual completa con toda la información y descripción detallada requerida
             html_tarjeta = (
                 f'<div class="{card_class}">'
                 f'<div class="badge-marca {badge_class}">{nombre_marca_tag}</div>'
@@ -331,12 +342,59 @@ def renderizar_lista_eventos(lista_eventos, key_prefix="evt"):
                         seleccionados.append(ev)
     return seleccionados
 
+def renderizar_lista_alquileres(lista_alquileres, key_prefix="alq"):
+    if not lista_alquileres:
+        st.info("No hay alquileres registrados para este día.")
+        return []
+
+    seleccionados = []
+    cols = st.columns(2)
+    
+    for idx, alq in enumerate(lista_alquileres):
+        with cols[idx % 2]:
+            costo = float(alq.get('costo_total', 0) or 0)
+            adelanto = float(alq.get('monto_adelanto', 0) or 0)
+            pendiente = costo - adelanto
+            
+            html_tarjeta = (
+                f'<div class="card-mobiliario">'
+                f'<div class="badge-marca badge-mobiliario">mobiliario</div>'
+                f'<div class="event-title">📦 Alquiler de Productos</div>'
+                f'<div class="data-line">📅 <b>Fecha Entrega:</b> {formatear_fecha_larga(alq.get("fecha", ""))}</div>'
+                f'<div class="data-line">⏰ <b>Hora:</b> {alq.get("hora_entrega", "N/A")}</div>'
+                f'<div class="data-line">👤 <b>Cliente:</b> {alq.get("cliente", "N/A")} | 📱 <b>Tel:</b> {alq.get("telefono", "N/A")}</div>'
+                f'<div class="data-line">📍 <b>Dirección:</b> {alq.get("direccion", "No especificada")}</div>'
+                f'<hr style="margin: 6px 10px; border-top: 1px dashed #bbb;">'
+                f'<div class="data-line">🛍️ <b>Items:</b> {alq.get("items", "N/A")}</div>'
+                f'<div class="data-line">💵 <b>Total:</b> S/ {costo:.0f} | 💳 <b>Adelanto:</b> S/ {adelanto:.0f} | <b style="color: #D90429;">Pendiente: S/ {pendiente:.0f}</b></div>'
+                f'</div>'
+            )
+
+            st.markdown(f"""
+                <style>
+                div.st-key-{key_prefix}_card_{alq['id']} {{
+                    background-color: #E0F2FE !important; border-left: 6px solid #0077B6 !important;
+                    border-radius: 8px !important; padding: 0 0 10px 0 !important; margin-bottom: 14px !important;
+                }}
+                div.st-key-{key_prefix}_card_{alq['id']} [data-testid="stHorizontalBlock"] {{ gap: 0.5rem !important; padding: 0 10px !important; }}
+                div.st-key-{key_prefix}_card_{alq['id']} [data-testid="stButton"] button {{ width: 100% !important; font-size: 0.85rem !important; padding: 6px 4px !important; }}
+                </style>
+            """, unsafe_allow_html=True)
+
+            with st.container(key=f"{key_prefix}_card_{alq['id']}"):
+                st.markdown(html_tarjeta, unsafe_allow_html=True)
+                col1, _ = st.columns([1, 1])
+                with col1:
+                    if st.checkbox("☑️ Enviar", key=f"{key_prefix}_chk_{alq['id']}"):
+                        seleccionados.append(alq)
+    return seleccionados
+
 # ==============================================================================
 # 7. INTERFAZ PRINCIPAL
 # ==============================================================================
 st.markdown(f'<div class="header-container"><img src="data:image/jpeg;base64,{logo_b64}" class="logo-inline"><div class="title-inline">MADAI</div></div>', unsafe_allow_html=True)
 
-tabs = ["HOY", "DÍA SIGUIENTE", "REGISTRO"]
+tabs = ["HOY", "DÍA SIGUIENTE", "ALQUILERES", "REGISTRO"]
 
 tab_seleccionada = st.radio("Navegación", tabs, index=tabs.index(st.session_state["tab_activa"]), horizontal=True, label_visibility="collapsed")
 
@@ -347,6 +405,7 @@ if tab_seleccionada != st.session_state["tab_activa"]:
     st.rerun()
 
 eventos_todos = obtener_eventos()
+alquileres_todos = obtener_alquileres()
 
 if tab_seleccionada == "HOY":
     st.write("### 📅 Eventos del Día de Hoy")
@@ -367,6 +426,44 @@ elif tab_seleccionada == "DÍA SIGUIENTE":
         texto_masivo_sig = f"📋 *RESUMEN DE EVENTOS PARA MAÑANA* ({formatear_fecha_larga(sig_str)})\n\n"
         for i, ev_s in enumerate(sel_sig, 1): texto_masivo_sig += f"--- *EVENTO {i}* ---\n" + generar_texto_ficha(ev_s) + "\n"
         st.markdown(f'<a href="https://wa.me/?text={urllib.parse.quote(texto_masivo_sig)}" target="_blank"><button style="width: 100%; background-color: #25D366; color: white; border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer;">📤 Enviar Fichas Seleccionadas al WhatsApp Grupal</button></a>', unsafe_allow_html=True)
+
+elif tab_seleccionada == "ALQUILERES":
+    st.write("### 🛋️ Gestión y Registro de Alquileres")
+    
+    with st.expander("➕ Registrar Nuevo Alquiler", expanded=False):
+        col_a1, col_a2 = st.columns(2)
+        with col_a1:
+            alq_cliente = st.text_input("**Nombre del Cliente**", key="alq_cli")
+            alq_tel = st.text_input("**Teléfono**", key="alq_tel")
+            alq_dir = st.text_input("**Dirección (Opcional)**", key="alq_dir")
+            alq_fecha = st.date_input("**Fecha de Entrega**", value=date.today(), key="alq_fec")
+        with col_a2:
+            alq_hora = st.text_input("**Hora de Entrega**", value="10:00 AM", key="alq_hor")
+            alq_items = st.text_area("**Items de Productos / Mobiliario**", key="alq_itms", placeholder="Ej: 2 mesas, 10 sillas, toldo...")
+            alq_costo = st.number_input("**Monto del Alquiler (S/)**", min_value=0, step=10, value=150, key="alq_cos")
+            alq_adelanto = st.number_input("**Adelanto (S/)**", min_value=0, step=10, value=50, key="alq_ade")
+            st.markdown(f"🔴 **Pendiente:** S/ {max(0, alq_costo - alq_adelanto):.0f}")
+
+        if st.button("📌 GUARDAR ALQUILER", use_container_width=True, key="btn_guardar_alq"):
+            supabase.table("alquileres").insert({
+                "cliente": alq_cliente, "telefono": alq_tel, "direccion": alq_dir,
+                "fecha": str(alq_fecha), "hora_entrega": alq_hora, "items": alq_items,
+                "costo_total": float(alq_costo), "monto_adelanto": float(alq_adelanto)
+            }).execute()
+            st.cache_data.clear()
+            st.success("¡Alquiler registrado con éxito!")
+            st.rerun()
+
+    st.markdown("---")
+    st.write("### 📋 Alquileres Programados")
+    filtro_fecha_alq = st.date_input("Filtrar por fecha de entrega:", value=date.today(), key="filtro_alq_fec")
+    
+    sel_alq = renderizar_lista_alquileres([a for a in alquileres_todos if str(a.get("fecha")) == str(filtro_fecha_alq)], key_prefix="alq_tab")
+
+    if sel_alq:
+        texto_masivo_alq = f"📋 *RESUMEN DE ALQUILERES SELECCIONADOS* ({formatear_fecha_larga(str(filtro_fecha_alq))})\n\n"
+        for i, alq_m in enumerate(sel_alq, 1): texto_masivo_alq += f"--- *ALQUILER {i}* ---\n" + generar_texto_alquiler(alq_m) + "\n"
+        st.markdown(f'<a href="https://wa.me/?text={urllib.parse.quote(texto_masivo_alq)}" target="_blank"><button style="width: 100%; background-color: #25D366; color: white; border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer;">📤 Enviar Alquileres Seleccionados al WhatsApp</button></a>', unsafe_allow_html=True)
 
 elif tab_seleccionada == "REGISTRO":
     st.write("### ➕ Registrar Nuevo Evento")
