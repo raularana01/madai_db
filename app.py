@@ -27,6 +27,8 @@ OPCIONES_DURACION = ["1.5 horas", "2 horas", "2.5 horas", "3 horas"]
 
 if "editar_personal_id" not in st.session_state:
     st.session_state["editar_personal_id"] = None
+if "editar_evento_id" not in st.session_state:
+    st.session_state["editar_evento_id"] = None
 if "ver_ficha_id" not in st.session_state:
     st.session_state["ver_ficha_id"] = None
 if "tab_activa" not in st.session_state:
@@ -63,7 +65,7 @@ if fondo_b64:
     """
 
 # ==============================================================================
-# 3. ESTILOS CSS OPTIMIZADOS
+# 3. ESTILOS CSS OPTIMIZADOS Y BOTÓN MINI DE EDICIÓN
 # ==============================================================================
 st.markdown(f"""
     <style>
@@ -87,18 +89,37 @@ st.markdown(f"""
     }}
     .card-madai, .card-risuena, .card-alquiler, .card-mobiliario {{ padding: 0 0 12px 0; border-radius: 8px; margin-bottom: 12px; position: relative; }}
     .badge-marca {{
-        position: absolute; top: 8px; right: 12px; padding: 3px 10px; border-radius: 12px;
+        position: absolute; top: 8px; right: 40px; padding: 3px 10px; border-radius: 12px;
         font-size: 0.75rem; font-weight: bold; color: white; text-transform: uppercase;
     }}
     .badge-madai {{ background-color: #7B2CBF; }}
     .badge-risuena {{ background-color: #2B9348; }}
     .badge-local {{ background-color: #023E8A; }}
     .badge-mobiliario {{ background-color: #D90429; }}
+    
+    /* BOTÓN MINIATURA EDITAR EN ESQUINA SUPERIOR DERECHA */
+    .btn-mini-editar {{
+        position: absolute; top: 6px; right: 6px; z-index: 10;
+    }}
+    .btn-mini-editar button {{
+        background: transparent !important;
+        border: none !important;
+        font-size: 14px !important;
+        padding: 2px 4px !important;
+        margin: 0 !important;
+        width: auto !important;
+        box-shadow: none !important;
+        line-height: 1 !important;
+    }}
+    .btn-mini-editar button:hover {{
+        transform: scale(1.2);
+    }}
+
     .header-madai {{ background-color: #7B2CBF; color: white; padding: 6px 12px; font-weight: bold; font-size: 0.95rem; border-radius: 4px 4px 0 0; }}
     .header-risuena {{ background-color: #2B9348; color: white; padding: 6px 12px; font-weight: bold; font-size: 0.95rem; border-radius: 4px 4px 0 0; }}
     .header-alquiler {{ background-color: #023E8A; color: white; padding: 6px 12px; font-weight: bold; font-size: 0.95rem; border-radius: 4px 4px 0 0; }}
     .header-mobiliario {{ background-color: #D90429; color: white; padding: 6px 12px; font-weight: bold; font-size: 0.95rem; border-radius: 4px 4px 0 0; }}
-    .event-title {{ font-size: 1.15rem; font-weight: bold; color: #111; padding: 10px 80px 4px 12px; }}
+    .event-title {{ font-size: 1.15rem; font-weight: bold; color: #111; padding: 10px 110px 4px 12px; }}
     .data-line {{ font-size: 0.95rem; color: #222; padding: 2px 12px; }}
     div.stButton > button {{
         background-color: #28a745 !important; color: white !important; font-weight: bold !important;
@@ -120,7 +141,7 @@ def formatear_fecha_larga(fecha_str):
     except Exception:
         return str(fecha_str)
 
-@st.cache_data(ttl=5)
+@st.cache_data(ttl=60)
 def obtener_eventos():
     res = supabase.table("eventos").select("*, personal(*)").execute()
     return res.data if res.data else []
@@ -128,12 +149,11 @@ def obtener_eventos():
 def generar_texto_ficha(ev):
     p_data = ev.get("personal", [{}])
     p_data = p_data[0] if isinstance(p_data, list) and len(p_data) > 0 else (p_data if isinstance(p_data, dict) else {})
-    
     marca = str(ev.get("marca", "madai")).upper()
-    tipo = str(ev.get("tipo", "Show"))
+    tipo = str(ev.get("tipo", "Show")).replace("Deco", "Decoración")
     fecha = formatear_fecha_larga(ev.get("fecha", ""))
-    costo = float(ev.get('costo_total', 0) or 0)
-    adelanto = float(ev.get('monto_adelanto', 0) or 0)
+    costo = int(float(ev.get('costo_total', 0) or 0))
+    adelanto = int(float(ev.get('monto_adelanto', 0) or 0))
     pendiente = costo - adelanto
 
     texto = (
@@ -161,16 +181,62 @@ def generar_texto_ficha(ev):
         if p_data.get("detalles"):
             texto += f"📝 *Notas:* {p_data.get('detalles')}\n"
         
-    texto += f"💵 *Total:* S/ {costo:.0f} | 💳 *Adelanto:* S/ {adelanto:.0f} | 💰 *Pendiente:* S/ {pendiente:.0f}\n"
+    texto += f"💵 *Total:* S/ {costo} | 💳 *Adelanto:* S/ {adelanto} | 💰 *Pendiente:* S/ {pendiente}\n"
     return texto
 
 # ==============================================================================
 # 5. MODALES
 # ==============================================================================
+@st.dialog("✏️ Editar Datos del Evento")
+def dialog_editar_evento(evento):
+    e_id = int(evento["id"])
+    st.write(f"**Modificando:** {evento.get('evento', '')}")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        n_marca = st.selectbox("Marca", ["madai", "risueña", "local", "mobiliario"], index=["madai", "risueña", "local", "mobiliario"].index(evento.get("marca", "madai") if evento.get("marca") in ["madai", "risueña", "local", "mobiliario"] else "madai"))
+        n_evento = st.text_input("Nombre del Evento", value=evento.get("evento", ""))
+        
+        tipo_actual = str(evento.get("tipo", "Show")).replace("Deco", "Decoración")
+        tipos_posibles = ["Show", "Show + Decoración", "Decoración", "Alquiler de Local", "Alquiler Mobiliario"]
+        idx_tipo = tipos_posibles.index(tipo_actual) if tipo_actual in tipos_posibles else 0
+        n_tipo = st.selectbox("Tipo", tipos_posibles, index=idx_tipo)
+        
+        n_cliente = st.text_input("Cliente", value=evento.get("cliente", ""))
+        n_telefono = st.text_input("Teléfono", value=evento.get("telefono", ""))
+    
+    with col2:
+        n_direccion = st.text_input("Dirección", value=evento.get("direccion", ""))
+        
+        fecha_val = datetime.strptime(str(evento.get("fecha")), "%Y-%m-%d").date() if evento.get("fecha") else date.today()
+        n_fecha = st.date_input("Fecha", value=fecha_val)
+        n_hora = st.text_input("Hora", value=evento.get("hora_contrato", "04:30 PM"))
+        
+        n_costo = st.number_input("Costo Total (S/)", min_value=0, step=10, value=int(float(evento.get("costo_total", 0) or 0)))
+        n_adelanto = st.number_input("Adelanto (S/)", min_value=0, step=10, value=int(float(evento.get("monto_adelanto", 0) or 0)))
+
+    if st.button("💾 Guardar Cambios", type="primary", use_container_width=True):
+        supabase.table("eventos").update({
+            "marca": n_marca,
+            "evento": n_evento.strip(),
+            "tipo": n_tipo,
+            "cliente": n_cliente.strip(),
+            "telefono": n_telefono.strip(),
+            "direccion": n_direccion.strip(),
+            "fecha": str(n_fecha),
+            "hora_contrato": n_hora.strip(),
+            "costo_total": int(n_costo),
+            "monto_adelanto": int(n_adelanto)
+        }).eq("id", e_id).execute()
+        
+        st.cache_data.clear()
+        st.session_state["editar_evento_id"] = None
+        st.success("¡Evento actualizado!")
+        st.rerun()
+
 @st.dialog("📦 Registrar Alquiler de Mobiliario")
 def dialog_registrar_alquiler():
     st.markdown("### 🪑 Detalle del Mobiliario")
-    
     col_i1, col_i2 = st.columns([3, 1])
     with col_i1:
         item_nombre = st.text_input("Ingresar Ítem / Mobiliario", key="item_nom_input", placeholder="Ej: 10 Sillas plásticas")
@@ -183,7 +249,6 @@ def dialog_registrar_alquiler():
         st.session_state["items_alquiler"].append(item_nombre.strip())
         st.rerun()
 
-    # Lista de ítems agregados
     if st.session_state["items_alquiler"]:
         st.write("---")
         st.write("**Ítems Agregados:**")
@@ -212,11 +277,11 @@ def dialog_registrar_alquiler():
     st.markdown("### 💵 Montos")
     col_m1, col_m2 = st.columns(2)
     with col_m1:
-        monto_total_manual = st.number_input("Monto Total (S/)", min_value=0.0, step=10.0, value=0.0, key="alq_total_manual")
+        monto_total_manual = st.number_input("Monto Total (S/)", min_value=0, step=10, value=0, key="alq_total_manual")
     with col_m2:
-        monto_adelanto = st.number_input("Adelanto / Pago (S/)", min_value=0.0, step=10.0, value=0.0, key="alq_adelanto")
+        monto_adelanto = st.number_input("Adelanto / Pago (S/)", min_value=0, step=10, value=0, key="alq_adelanto")
         
-    st.markdown(f"🔴 **Pendiente:** S/ {max(0.0, monto_total_manual - monto_adelanto):.0f}")
+    st.markdown(f"🔴 **Pendiente:** S/ {max(0, int(monto_total_manual) - int(monto_adelanto))}")
 
     if st.button("💾 GUARDAR ALQUILER", type="primary", use_container_width=True):
         if not cli_nombre.strip():
@@ -225,8 +290,6 @@ def dialog_registrar_alquiler():
             st.error("Agrega al menos un ítem a la lista.")
         else:
             resumen_items = ", ".join(st.session_state["items_alquiler"])
-            
-            # Guardar en Supabase
             supabase.table("eventos").insert({
                 "marca": "mobiliario",
                 "evento": f"Alquiler: {resumen_items}",
@@ -236,11 +299,10 @@ def dialog_registrar_alquiler():
                 "direccion": cli_direccion.strip() if cli_direccion.strip() else "Alquiler de Mobiliario",
                 "fecha": str(fecha_alq),
                 "hora_contrato": hora_alq.strip(),
-                "costo_total": float(monto_total_manual),
-                "monto_adelanto": float(monto_adelanto)
+                "costo_total": int(monto_total_manual),
+                "monto_adelanto": int(monto_adelanto)
             }).execute()
             
-            # Resetear estado y redirigir para cerrar modal en un solo clic
             st.session_state["items_alquiler"] = []
             st.cache_data.clear()
             st.session_state["tab_activa"] = "HOY"
@@ -299,8 +361,8 @@ def dialog_ver_ficha(evento):
     p_data = p_data[0] if p_data else {}
 
     fecha_fmt = formatear_fecha_larga(ev.get("fecha", ""))
-    costo = float(ev.get('costo_total', 0) or 0)
-    adelanto = float(ev.get('monto_adelanto', 0) or 0)
+    costo = int(float(ev.get('costo_total', 0) or 0))
+    adelanto = int(float(ev.get('monto_adelanto', 0) or 0))
     pendiente = costo - adelanto
     marca = str(ev.get("marca", "madai")).lower()
     
@@ -315,7 +377,7 @@ def dialog_ver_ficha(evento):
     if "local" not in marca:
         st.markdown(f'<div class="data-line">📍 <b>Dirección / Lugar:</b> {ev.get("direccion", "N/A")}</div>', unsafe_allow_html=True)
 
-    st.markdown(f'<div class="data-line">💵 <b>Total:</b> S/ {costo:.0f} | 💳 <b>Adelanto:</b> S/ {adelanto:.0f} | <b style="color: #D90429;">Pendiente: S/ {pendiente:.0f}</b></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="data-line">💵 <b>Total:</b> S/ {costo} | 💳 <b>Adelanto:</b> S/ {adelanto} | <b style="color: #D90429;">Pendiente: S/ {pendiente}</b></div>', unsafe_allow_html=True)
     
     if marca != "mobiliario":
         st.markdown(f'<div class="{header_class}">👥 Personal Asignado</div>', unsafe_allow_html=True)
@@ -324,13 +386,13 @@ def dialog_ver_ficha(evento):
         st.markdown(f'<div class="data-line">🎧 <b>DJ:</b> {p_data.get("dj", "No asignado")}</div>', unsafe_allow_html=True)
         st.markdown(f'<div class="data-line">🛠️ <b>Staff:</b> {p_data.get("staff", "No asignado")}</div>', unsafe_allow_html=True)
         
-        if st.button("✏️ Modificar Personal", use_container_width=True, key=f"mod_{ev['id']}"):
+        if st.button("✏ Modificar Personal", use_container_width=True, key=f"mod_{ev['id']}"):
             st.session_state["ver_ficha_id"] = None
             st.session_state["editar_personal_id"] = ev["id"]
             st.rerun()
 
 # ==============================================================================
-# 6. RENDERIZAR LISTA (TARJETAS VISUALES COMPLETAS)
+# 6. RENDERIZAR LISTA (CON BOTÓN DE EDICIÓN MINIATURA)
 # ==============================================================================
 def renderizar_lista_eventos(lista_eventos, key_prefix="evt"):
     if not lista_eventos:
@@ -342,10 +404,11 @@ def renderizar_lista_eventos(lista_eventos, key_prefix="evt"):
     
     for idx, ev in enumerate(lista_eventos):
         with cols[idx % 2]:
-            costo = float(ev.get('costo_total', 0) or 0)
-            adelanto = float(ev.get('monto_adelanto', 0) or 0)
+            costo = int(float(ev.get('costo_total', 0) or 0))
+            adelanto = int(float(ev.get('monto_adelanto', 0) or 0))
             pendiente = costo - adelanto
-            tipo_str = str(ev.get('tipo', 'Show'))
+            
+            tipo_str = str(ev.get('tipo', 'Show')).replace("Deco", "Decoración")
             marca_raw = str(ev.get('marca', 'madai')).lower()
             
             if "mobiliario" in marca_raw:
@@ -382,7 +445,7 @@ def renderizar_lista_eventos(lista_eventos, key_prefix="evt"):
                 )
 
             html_tarjeta += (
-                f'<div class="data-line">💵 <b>Total:</b> S/ {costo:.0f} | 💳 <b>Adelanto:</b> S/ {adelanto:.0f} | <b style="color: #D90429;">Pendiente: S/ {pendiente:.0f}</b></div>'
+                f'<div class="data-line">💵 <b>Total:</b> S/ {costo} | 💳 <b>Adelanto:</b> S/ {adelanto} | <b style="color: #D90429;">Pendiente: S/ {pendiente}</b></div>'
                 f'</div>'
             )
 
@@ -391,6 +454,7 @@ def renderizar_lista_eventos(lista_eventos, key_prefix="evt"):
                 div.st-key-{key_prefix}_card_{ev['id']} {{
                     background-color: {card_bg} !important; border-left: 6px solid #28A745 !important;
                     border-radius: 8px !important; padding: 0 0 10px 0 !important; margin-bottom: 14px !important;
+                    position: relative !important;
                 }}
                 div.st-key-{key_prefix}_card_{ev['id']} [data-testid="stHorizontalBlock"] {{ gap: 0.5rem !important; padding: 0 10px !important; }}
                 div.st-key-{key_prefix}_card_{ev['id']} [data-testid="stButton"] button {{ width: 100% !important; font-size: 0.85rem !important; padding: 6px 4px !important; }}
@@ -398,6 +462,15 @@ def renderizar_lista_eventos(lista_eventos, key_prefix="evt"):
             """, unsafe_allow_html=True)
 
             with st.container(key=f"{key_prefix}_card_{ev['id']}"):
+                # Botón de edición miniatura posicionado de forma absoluta en la esquina superior derecha
+                col_m_edit, _ = st.columns([0.1, 0.9])
+                with col_m_edit:
+                    st.markdown('<div class="btn-mini-editar">', unsafe_allow_html=True)
+                    if st.button("✏️️", key=f"{key_prefix}_mini_edit_{ev['id']}", help="Editar datos del evento"):
+                        st.session_state["editar_evento_id"] = ev["id"]
+                        st.rerun()
+                    st.markdown('</div>', unsafe_allow_html=True)
+
                 st.markdown(html_tarjeta, unsafe_allow_html=True)
                 
                 if "mobiliario" not in marca_raw:
@@ -436,13 +509,14 @@ def renderizar_lista_eventos(lista_eventos, key_prefix="evt"):
 # ==============================================================================
 st.markdown(f'<div class="header-container"><img src="data:image/jpeg;base64,{logo_b64}" class="logo-inline"><div class="title-inline">MADAI</div></div>', unsafe_allow_html=True)
 
-tabs = ["HOY", "PRÓXIMOS EVENTOS", "ALQUILER", "REGISTRO"]
+tabs = ["HOY", "PRÓXIMOS EVENTOS", "FIDELIZACIÓN", "ALQUILER", "REGISTRO"]
 
 tab_seleccionada = st.radio("Navegación", tabs, index=tabs.index(st.session_state["tab_activa"]), horizontal=True, label_visibility="collapsed")
 
 if tab_seleccionada != st.session_state["tab_activa"]:
     st.session_state["tab_activa"] = tab_seleccionada
     st.session_state["editar_personal_id"] = None
+    st.session_state["editar_evento_id"] = None
     st.session_state["ver_ficha_id"] = None
     st.rerun()
 
@@ -452,8 +526,7 @@ if tab_seleccionada == "HOY":
     st.write("### 📅 Eventos del Día de Hoy")
     hoy = date.today()
     
-    # Opción para ver eventos pasados (hasta 7 días atrás)
-    ver_pasados = st.checkbox("⬅️ Ver eventos pasados (hasta 7 días atrás)")
+    ver_pasados = st.checkbox("⬅️️ Ver eventos pasados (hasta 7 días atrás)")
     
     if ver_pasados:
         hace_7_dias = hoy - timedelta(days=7)
@@ -461,7 +534,6 @@ if tab_seleccionada == "HOY":
             e for e in eventos_todos 
             if e.get("fecha") and hace_7_dias <= datetime.strptime(str(e.get("fecha")), "%Y-%m-%d").date() <= hoy
         ]
-        # Ordenar los eventos cronológicamente
         eventos_filtrados.sort(key=lambda x: str(x.get("fecha")))
     else:
         hoy_str = str(hoy)
@@ -477,11 +549,9 @@ if tab_seleccionada == "HOY":
 
 elif tab_seleccionada == "PRÓXIMOS EVENTOS":
     st.write("### 📆 Próximos Eventos y Búsqueda por Fecha")
-    
     hoy = date.today()
     limite_30_dias = hoy + timedelta(days=30)
 
-    # Opción para buscar por fecha específica dentro de la misma pestaña
     usar_fecha_especifica = st.checkbox("🔍 Buscar show por fecha específica")
     
     if usar_fecha_especifica:
@@ -489,12 +559,10 @@ elif tab_seleccionada == "PRÓXIMOS EVENTOS":
         eventos_filtrados = [e for e in eventos_todos if str(e.get("fecha")) == str(fecha_busqueda)]
         titulo_seccion = f"Eventos para el {formatear_fecha_larga(fecha_busqueda)}"
     else:
-        # Eventos desde hoy hasta los próximos 30 días
         eventos_filtrados = [
             e for e in eventos_todos 
             if e.get("fecha") and hoy <= datetime.strptime(str(e.get("fecha")), "%Y-%m-%d").date() <= limite_30_dias
         ]
-        # Ordenar cronológicamente
         eventos_filtrados.sort(key=lambda x: str(x.get("fecha")))
         titulo_seccion = "Eventos de los próximos 30 días (incluye hoy)"
 
@@ -506,6 +574,61 @@ elif tab_seleccionada == "PRÓXIMOS EVENTOS":
         for i, ev_s in enumerate(sel_sig, 1): 
             texto_masivo_sig += f"--- *EVENTO {i}* ---\n" + generar_texto_ficha(ev_s) + "\n"
         st.markdown(f'<a href="https://wa.me/?text={urllib.parse.quote(texto_masivo_sig)}" target="_blank"><button style="width: 100%; background-color: #25D366; color: white; border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer;">📤 Enviar Fichas Seleccionadas al WhatsApp Grupal</button></a>', unsafe_allow_html=True)
+
+elif tab_seleccionada == "FIDELIZACIÓN":
+    st.write("### 💬 Recordatorios de Recontactación de Clientes")
+    st.info("Muestra los eventos realizados meses atrás para saludarlos, consultar su satisfacción u ofrecerles promociones de recontratación.")
+    
+    meses_atras = st.selectbox("Selecciona el tiempo transcurrido desde el evento:", [3, 6, 10, 11, 12], index=0)
+    
+    hoy = date.today()
+    dias_aprox = int(meses_atras * 30.4)
+    fecha_target = hoy - timedelta(days=dias_aprox)
+    f_min = fecha_target - timedelta(days=3)
+    f_max = fecha_target + timedelta(days=3)
+
+    eventos_fidelizar = []
+    for e in eventos_todos:
+        if e.get("fecha"):
+            try:
+                f_evt = datetime.strptime(str(e.get("fecha")), "%Y-%m-%d").date()
+                if f_min <= f_evt <= f_max:
+                    eventos_fidelizar.append(e)
+            except Exception:
+                pass
+
+    st.write(f"**Clientes con evento realizado hace aprox. {meses_atras} meses (entre {f_min.strftime('%d/%m')} y {f_max.strftime('%d/%m')}):**")
+
+    if not eventos_fidelizar:
+        st.success("🎉 No hay clientes pendientes de recontactar en este rango de fechas.")
+    else:
+        cols_fid = st.columns(2)
+        for idx, ev_f in enumerate(eventos_fidelizar):
+            with cols_fid[idx % 2]:
+                cliente_nom = ev_f.get("cliente", "Cliente")
+                telefono_num = str(ev_f.get("telefono", "")).replace(" ", "").replace("-", "")
+                evento_nom = ev_f.get("evento", "su evento")
+                fecha_evt_fmt = formatear_fecha_larga(ev_f.get("fecha", ""))
+                
+                if meses_atras <= 3:
+                    mensaje_saludo = f"¡Hola {cliente_nom}! 👋 Te saludamos de Decoraciones MADAI. Queríamos agradecerte nuevamente por confiar en nosotros para {evento_nom} el pasado {fecha_evt_fmt}. ¡Esperamos que todo haya salido genial! Nos encantaría saber tu opinión o si necesitas ayuda para tu próximo evento. 🎉"
+                else:
+                    mensaje_saludo = f"¡Hola {cliente_nom}! 👋 Te saludamos de Decoraciones MADAI. Recordando el lindo evento de {evento_nom} del año pasado ({fecha_evt_fmt}), ¡queríamos comentarte que ya estamos agendando las próximas fechas! Tenemos promociones exclusivas para clientes recurrentes. 😊✨"
+                
+                st.markdown(f"""
+                    <div style="background-color: #E8F5E9; border-left: 5px solid #2E7D32; border-radius: 8px; padding: 12px; margin-bottom: 12px;">
+                        <h4 style="margin:0 0 5px 0; color:#1B5E20;">🎉 {evento_nom}</h4>
+                        <p style="margin:2px 0;"><b>👤 Cliente:</b> {cliente_nom}</p>
+                        <p style="margin:2px 0;"><b>📱 Teléfono:</b> {ev_f.get("telefono", "N/A")}</p>
+                        <p style="margin:2px 0;"><b>📅 Fecha del Show:</b> {fecha_evt_fmt}</p>
+                    </div>
+                """, unsafe_allow_html=True)
+                
+                if telefono_num:
+                    url_wa = f"https://wa.me/51{telefono_num}?text={urllib.parse.quote(mensaje_saludo)}"
+                    st.markdown(f'<a href="{url_wa}" target="_blank"><button style="width: 100%; background-color: #25D366; color: white; border: none; padding: 8px; border-radius: 6px; font-weight: bold; cursor: pointer; margin-bottom: 10px;">💬 Enviar Mensaje de Recontacto (WhatsApp)</button></a>', unsafe_allow_html=True)
+                else:
+                    st.warning("Sin número registrado para WhatsApp")
 
 elif tab_seleccionada == "ALQUILER":
     st.write("### 🪑 Gestión de Alquiler de Mobiliario")
@@ -519,7 +642,7 @@ elif tab_seleccionada == "REGISTRO":
     with col1:
         marca = st.selectbox("**Marca**", ["madai", "risueña", "local"])
         evento_nom = st.text_input("**Nombre del Evento**")
-        tipo_e = "Alquiler de Local" if marca == "local" else st.selectbox("**Tipo**", ["Show", "Show + Deco", "Deco"])
+        tipo_e = "Alquiler de Local" if marca == "local" else st.selectbox("**Tipo**", ["Show", "Show + Decoración", "Decoración"])
         cliente = st.text_input("**Cliente**")
         telefono = st.text_input("**Teléfono**")
         direccion = "Local MADAI" if marca == "local" else st.text_input("**Dirección**")
@@ -527,23 +650,59 @@ elif tab_seleccionada == "REGISTRO":
     
     with col2:
         hora_c = st.text_input("**Hora**", value="04:30 PM")
-        costo_t = 600 if marca == "local" else st.number_input("**Monto Total (S/)**", min_value=0, step=10, value=250)
-        monto_a = st.number_input("**Adelanto (S/)**", min_value=0, step=10, value=100)
-        st.markdown(f"🔴 **Pendiente:** S/ {max(0, costo_t - monto_a):.0f}")
+        
+        if tipo_e == "Show + Decoración":
+            col_m1, col_m2 = st.columns(2)
+            with col_m1:
+                costo_show = st.number_input("**Costo Show (S/)**", min_value=0, step=10, value=250)
+            with col_m2:
+                costo_deco = st.number_input("**Costo Decoración (S/)**", min_value=0, step=10, value=150)
+            costo_t = costo_show + costo_deco
+            st.info(f"💰 **Monto Total Combinado:** S/ {costo_t}")
+        else:
+            monto_defecto = 600 if marca == "local" else 250
+            costo_t = st.number_input("**Monto Total (S/)**", min_value=0, step=10, value=monto_defecto)
+        
+        monto_a = st.number_input("**Adelanto (S/)**", min_value=0, step=10, value=0)
+        pendiente_calc = max(0, int(costo_t) - int(monto_a))
+        st.markdown(f"🔴 **Pendiente:** S/ {pendiente_calc}")
 
     if st.button("📌 GUARDAR EVENTO", use_container_width=True):
-        supabase.table("eventos").insert({
-            "marca": marca, "evento": evento_nom, "tipo": tipo_e, "cliente": cliente,
-            "telefono": telefono, "direccion": direccion, "fecha": str(fecha_e),
-            "hora_contrato": hora_c, "costo_total": float(costo_t), "monto_adelanto": float(monto_a)
-        }).execute()
-        st.cache_data.clear()
-        st.session_state["tab_activa"] = "HOY"
-        st.rerun()
+        if not evento_nom.strip() or not cliente.strip():
+            st.error("Por favor completa el nombre del evento y del cliente.")
+        else:
+            payload_evento = {
+                "marca": marca,
+                "evento": evento_nom.strip(),
+                "tipo": tipo_e,
+                "cliente": cliente.strip(),
+                "telefono": telefono.strip(),
+                "direccion": direccion.strip(),
+                "fecha": str(fecha_e),
+                "hora_contrato": hora_c.strip(),
+                "costo_total": int(costo_t),
+                "monto_adelanto": int(monto_a)
+            }
+            res_ins = supabase.table("eventos").insert(payload_evento).execute()
+            
+            if tipo_e == "Show + Decoración" and res_ins.data:
+                nuevo_id = res_ins.data[0]["id"]
+                obs_precios = f"Desglose de Pago: Show S/ {costo_show} | Decoración S/ {costo_deco}"
+                supabase.table("personal").insert({
+                    "evento_id": nuevo_id,
+                    "detalles": obs_precios
+                }).execute()
+            
+            st.cache_data.clear()
+            st.session_state["tab_activa"] = "HOY"
+            st.rerun()
 
 # ==============================================================================
 # 8. DISPARADORES DE MODALES
 # ==============================================================================
+if st.session_state["editar_evento_id"]:
+    dialog_editar_evento(next((e for e in eventos_todos if e["id"] == st.session_state["editar_evento_id"]), {}))
+
 if st.session_state["ver_ficha_id"]:
     dialog_ver_ficha(next((e for e in eventos_todos if e["id"] == st.session_state["ver_ficha_id"]), {}))
 
